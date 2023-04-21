@@ -20,7 +20,6 @@ TASK [openstack.kolla.baremetal : Ensure localhost in /etc/hosts] **************
 ok: [localhost]
 
 TASK [openstack.kolla.baremetal : Ensure hostname does not point to 127.0.1.1 in /etc/hosts] ***********************************************************************************************************************************************************************************
-[WARNING]: Module remote_tmp /root/.ansible/tmp did not exist and was created with a mode of 0700, this may cause issues when running as another user. To avoid this, create the remote_tmp dir with the correct permissions manually
 changed: [localhost]
 
 TASK [openstack.kolla.baremetal : Generate /etc/hosts for all of the nodes] ****************************************************************************************************************************************************************************************************
@@ -54,7 +53,7 @@ TASK [openstack.kolla.docker : Fail if docker_custom_option is defined] ********
 skipping: [localhost]
 
 TASK [openstack.kolla.docker : include_tasks] **********************************************************************************************************************************************************************************************************************************
-included: /home/cuongdm/.ansible/collections/ansible_collections/openstack/kolla/roles/docker/tasks/repo-Debian.yml for localhost
+included: /root/.ansible/collections/ansible_collections/openstack/kolla/roles/docker/tasks/repo-Debian.yml for localhost
 
 TASK [openstack.kolla.docker : Install CA certificates and gnupg packages] *****************************************************************************************************************************************************************************************************
 ok: [localhost]
@@ -151,7 +150,7 @@ TASK [openstack.kolla.baremetal : Ensure node_config_directory directory exists]
 ok: [localhost]
 
 TASK [openstack.kolla.apparmor_libvirt : include_tasks] ************************************************************************************************************************************************************************************************************************
-included: /home/cuongdm/.ansible/collections/ansible_collections/openstack/kolla/roles/apparmor_libvirt/tasks/remove-profile.yml for localhost
+included: /root/.ansible/collections/ansible_collections/openstack/kolla/roles/apparmor_libvirt/tasks/remove-profile.yml for localhost
 
 TASK [openstack.kolla.apparmor_libvirt : Get stat of libvirtd apparmor profile] ************************************************************************************************************************************************************************************************
 ok: [localhost]
@@ -175,4 +174,4 @@ TASK [openstack.kolla.baremetal : include_tasks] *******************************
 skipping: [localhost]
 
 PLAY RECAP *********************************************************************************************************************************************************************************************************************************************************************
-localhost                  : ok=30   changed=12   unreachable=0    failed=0    skipped=23   rescued=0    ignored=0 
+localhost                  : ok=30   changed=12   unreachable=0    failed=0    skipped=23   rescued=0    ignored=0
