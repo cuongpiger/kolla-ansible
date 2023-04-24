@@ -74,6 +74,7 @@
         - enable_vitrage_{{ enable_vitrage | bool }}
         - enable_watcher_{{ enable_watcher | bool }}
         - enable_zun_{{ enable_zun | bool }}
+        - enable_jaeger_{{ enable_jaeger | bool }}
   tags: always
 
 - name: Apply role prechecks
@@ -379,6 +380,16 @@
   roles:
     - { role: redis,
         tags: redis }
+
+- name: Apply role jaeger
+  gather_facts: false
+  hosts:
+    - jaeger
+    - '&enable_jaeger_True'
+  serial: '{{ kolla_serial|default("0") }}'
+  roles:
+    - { role: jaeger,
+        tags: jaeger }
 
 - name: Apply role mariadb
   gather_facts: false

@@ -801,9 +801,13 @@ redis_connection_string_extras: "&db=0&socket_timeout=60&retry_on_timeout=yes"
 # Osprofiler options
 ####################
 # valid values: ["elasticsearch", "redis"]
-osprofiler_backend: "elasticsearch"
+#osprofiler_backend: "elasticsearch"
+#opensearch_connection_string: "elasticsearch://{{ opensearch_address | put_address_in_context('url') }}:{{ opensearch_port }}"
+#osprofiler_backend_connection_string: "{{ redis_connection_string if osprofiler_backend == 'redis' else opensearch_connection_string }}"
+
+osprofiler_backend: "jaeger"
 opensearch_connection_string: "elasticsearch://{{ opensearch_address | put_address_in_context('url') }}:{{ opensearch_port }}"
-osprofiler_backend_connection_string: "{{ redis_connection_string if osprofiler_backend == 'redis' else opensearch_connection_string }}"
+osprofiler_backend_connection_string: "jaeger://{{ kolla_internal_vip_address }}:6831"
 
 ####################
 # RabbitMQ options

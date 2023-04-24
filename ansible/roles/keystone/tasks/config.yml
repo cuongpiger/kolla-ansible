@@ -246,3 +246,12 @@
     - keystone_ssh.enabled | bool
   notify:
     - Restart keystone-ssh container
+
+- name: Install Jaeger-client
+  pip:
+    name:
+      - jaeger-client==4.8.0
+      - elasticsearch==8.7.0
+    state: present
+  notify:
+    - Restart keystone container
