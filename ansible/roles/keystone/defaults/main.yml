@@ -4,7 +4,7 @@ keystone_services:
     container_name: "keystone"
     group: "keystone"
     enabled: true
-    image: "docker.io/manhcuong8499/keystone:stable_zed"
+    image: "docker.io/manhcuong8499/dev_keystone_ubuntu_jammy_zed:latest"
     volumes: "{{ keystone_default_volumes + keystone_extra_volumes }}"
     dimensions: "{{ keystone_dimensions }}"
     healthcheck: "{{ keystone_healthcheck }}"
@@ -38,7 +38,7 @@ keystone_services:
     container_name: "keystone_ssh"
     group: "keystone"
     enabled: true
-    image: "{{ keystone_ssh_image_full }}"
+    image: "docker.io/manhcuong8499/dev_keystone_ssh_ubuntu_jammy_zed:latest"
     volumes:
       - "{{ node_config_directory }}/keystone-ssh/:{{ container_config_directory }}/:ro"
       - "/etc/localtime:/etc/localtime:ro"
@@ -51,7 +51,7 @@ keystone_services:
     container_name: "keystone_fernet"
     group: "keystone"
     enabled: true
-    image: "{{ keystone_fernet_image_full }}"
+    image: "docker.io/manhcuong8499/dev_keystone_fernet_ubuntu_jammy_zed:latest"
     volumes:
       - "{{ node_config_directory }}/keystone-fernet/:{{ container_config_directory }}/:ro"
       - "/etc/localtime:/etc/localtime:ro"
