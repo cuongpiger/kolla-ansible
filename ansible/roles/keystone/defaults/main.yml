@@ -4,7 +4,7 @@ keystone_services:
     container_name: "keystone"
     group: "keystone"
     enabled: true
-    image: "manhcuong8499/keystone:stable_zed"
+    image: "docker.io/manhcuong8499/keystone:stable_zed"
     volumes: "{{ keystone_default_volumes + keystone_extra_volumes }}"
     dimensions: "{{ keystone_dimensions }}"
     healthcheck: "{{ keystone_healthcheck }}"
