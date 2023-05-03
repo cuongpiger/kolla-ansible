@@ -90,7 +90,7 @@ function find_base_dir {
   dir_name=$(readlink -e "$dir_name")
   python_dir="python${ansible_python_version}"
   if [ ! -z "$CONDA_DEFAULT_ENV" ]; then
-    BASEDIR=$(echo $(dirname $(which python)) | sed 's/.\{4\}$//') + "/share/kolla-ansible"
+    BASEDIR=$(echo $(dirname $(which python)) | sed 's/.\{4\}$//')"/share/kolla-ansible"
   elif [ -z "$SNAP" ]; then
     if [[ ${dir_name} == "/usr/bin" ]]; then
       if test -f /usr/lib/${python_dir}/*-packages/kolla-ansible.egg-link; then
