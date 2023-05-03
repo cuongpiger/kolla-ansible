@@ -127,6 +127,8 @@ function find_base_dir {
   else
     BASEDIR="$SNAP/share/kolla-ansible"
   fi
+
+  echo "[DEBUG] Using BASEDIR=$BASEDIR"
 }
 
 function install_deps {

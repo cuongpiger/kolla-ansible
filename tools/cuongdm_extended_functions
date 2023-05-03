@@ -4,4 +4,6 @@ function check_conda_env_activate {
   if [ ! -z "$CONDA_DEFAULT_ENV" ]; then
     BASEDIR=$(echo $(dirname $(which python)) | sed 's/.\{4\}$//') + "/share/kolla-ansible"
   fi
+
+  echo "Running file is $0"
 }
