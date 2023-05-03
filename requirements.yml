@@ -1,5 +1,5 @@
 ---
 collections:
-  - name: https://opendev.org/openstack/ansible-collection-kolla
+  - name: https://github.com/cuongpiger/ansible-collection-kolla
     type: git
-    version: stable/zed
+    version: dev/zed
