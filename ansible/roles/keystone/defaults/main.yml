@@ -4,7 +4,7 @@ keystone_services:
     container_name: "keystone"
     group: "keystone"
     enabled: true
-    image: "docker.io/manhcuong8499/dev_keystone_ubuntu_jammy_zed:latest"
+    image: "{{ keystone_image_full }}"
     volumes: "{{ keystone_default_volumes + keystone_extra_volumes }}"
     dimensions: "{{ keystone_dimensions }}"
     healthcheck: "{{ keystone_healthcheck }}"
@@ -38,7 +38,7 @@ keystone_services:
     container_name: "keystone_ssh"
     group: "keystone"
     enabled: true
-    image: "docker.io/manhcuong8499/dev_keystone_ssh_ubuntu_jammy_zed:latest"
+    image: "{{ keystone_ssh_image_full }}"
     volumes:
       - "{{ node_config_directory }}/keystone-ssh/:{{ container_config_directory }}/:ro"
       - "/etc/localtime:/etc/localtime:ro"
@@ -51,7 +51,7 @@ keystone_services:
     container_name: "keystone_fernet"
     group: "keystone"
     enabled: true
-    image: "docker.io/manhcuong8499/dev_keystone_fernet_ubuntu_jammy_zed:latest"
+    image: "{{ keystone_fernet_image_full }}"
     volumes:
       - "{{ node_config_directory }}/keystone-fernet/:{{ container_config_directory }}/:ro"
       - "/etc/localtime:/etc/localtime:ro"
@@ -94,16 +94,16 @@ keystone_groupname: "keystone"
 ####################
 keystone_tag: "{{ openstack_tag }}"
 
-keystone_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/keystone"
-keystone_service_tag: "{{ keystone_tag }}"
+keystone_image: "docker.io/manhcuong8499/dev-zed_keystone"
+keystone_service_tag: "latest"
 keystone_image_full: "{{ keystone_image }}:{{ keystone_service_tag }}"
 
-keystone_fernet_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/keystone-fernet"
-keystone_fernet_tag: "{{ keystone_tag }}"
+keystone_fernet_image: "docker.io/manhcuong8499/dev-zed_keystone-fernet"
+keystone_fernet_tag: "latest"
 keystone_fernet_image_full: "{{ keystone_fernet_image }}:{{ keystone_fernet_tag }}"
 
-keystone_ssh_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/keystone-ssh"
-keystone_ssh_tag: "{{ keystone_tag }}"
+keystone_ssh_image: "docker.io/manhcuong8499/dev-zed_keystone-ssh"
+keystone_ssh_tag: "latest"
 keystone_ssh_image_full: "{{ keystone_ssh_image }}:{{ keystone_ssh_tag }}"
 
 keystone_dimensions: "{{ default_container_dimensions }}"

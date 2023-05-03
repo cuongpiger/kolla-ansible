@@ -216,37 +216,37 @@ nova_cell_notify_rabbitmq_users:
 ####################
 nova_tag: "{{ openstack_tag }}"
 
-nova_libvirt_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-libvirt"
-nova_libvirt_tag: "{{ nova_tag }}"
+nova_libvirt_image: "docker.io/manhcuong8499/dev-zed_nova-libvirt"
+nova_libvirt_tag: "latest"
 nova_libvirt_image_full: "{{ nova_libvirt_image }}:{{ nova_libvirt_tag }}"
 nova_libvirt_cpu_mode: "{{ 'host-passthrough' if ansible_facts.architecture == 'aarch64' else '' }}"
 
-nova_ssh_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-ssh"
-nova_ssh_tag: "{{ nova_tag }}"
+nova_ssh_image: "docker.io/manhcuong8499/dev-zed_nova-ssh"
+nova_ssh_tag: "latest"
 nova_ssh_image_full: "{{ nova_ssh_image }}:{{ nova_ssh_tag }}"
 
-nova_novncproxy_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-novncproxy"
-nova_novncproxy_tag: "{{ nova_tag }}"
+nova_novncproxy_image: "docker.io/manhcuong8499/dev-zed_nova-novncproxy"
+nova_novncproxy_tag: "latest"
 nova_novncproxy_image_full: "{{ nova_novncproxy_image }}:{{ nova_novncproxy_tag }}"
 
-nova_spicehtml5proxy_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-spicehtml5proxy"
-nova_spicehtml5proxy_tag: "{{ nova_tag }}"
+nova_spicehtml5proxy_image: "docker.io/manhcuong8499/dev-zed_nova-spicehtml5proxy"
+nova_spicehtml5proxy_tag: "latest"
 nova_spicehtml5proxy_image_full: "{{ nova_spicehtml5proxy_image }}:{{ nova_spicehtml5proxy_tag }}"
 
-nova_serialproxy_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-serialproxy"
-nova_serialproxy_tag: "{{ nova_tag }}"
+nova_serialproxy_image: "docker.io/manhcuong8499/dev-zed_nova-serialproxy"
+nova_serialproxy_tag: "latest"
 nova_serialproxy_image_full: "{{ nova_serialproxy_image }}:{{ nova_serialproxy_tag }}"
 
-nova_conductor_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-conductor"
-nova_conductor_tag: "{{ nova_tag }}"
+nova_conductor_image: "docker.io/manhcuong8499/dev-zed_nova-conductor"
+nova_conductor_tag: "latest"
 nova_conductor_image_full: "{{ nova_conductor_image }}:{{ nova_conductor_tag }}"
 
-nova_compute_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-compute"
-nova_compute_tag: "{{ nova_tag }}"
+nova_compute_image: "docker.io/manhcuong8499/dev-zed_nova-compute"
+nova_compute_tag: "latest"
 nova_compute_image_full: "{{ nova_compute_image }}:{{ nova_compute_tag }}"
 
-nova_compute_ironic_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-compute-ironic"
-nova_compute_ironic_tag: "{{ nova_tag }}"
+nova_compute_ironic_image: "docker.io/manhcuong8499/dev-zed_nova-compute-ironic"
+nova_compute_ironic_tag: "latest"
 nova_compute_ironic_image_full: "{{ nova_compute_ironic_image }}:{{ nova_compute_ironic_tag }}"
 
 nova_libvirt_default_dimensions:

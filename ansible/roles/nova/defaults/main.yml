@@ -96,16 +96,16 @@ nova_database_shard:
 ####################
 nova_tag: "{{ openstack_tag }}"
 
-nova_super_conductor_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-conductor"
-nova_super_conductor_tag: "{{ nova_tag }}"
+nova_super_conductor_image: "docker.io/manhcuong8499/dev-zed_nova-conductor"
+nova_super_conductor_tag: "latest"
 nova_super_conductor_image_full: "{{ nova_super_conductor_image }}:{{ nova_super_conductor_tag }}"
 
-nova_scheduler_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-scheduler"
-nova_scheduler_tag: "{{ nova_tag }}"
+nova_scheduler_image: "docker.io/manhcuong8499/dev-zed_nova-scheduler"
+nova_scheduler_tag: "latest"
 nova_scheduler_image_full: "{{ nova_scheduler_image }}:{{ nova_scheduler_tag }}"
 
-nova_api_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-api"
-nova_api_tag: "{{ nova_tag }}"
+nova_api_image: "docker.io/manhcuong8499/dev-zed_nova-api"
+nova_api_tag: "latest"
 nova_api_image_full: "{{ nova_api_image }}:{{ nova_api_tag }}"
 
 nova_api_dimensions: "{{ default_container_dimensions }}"
