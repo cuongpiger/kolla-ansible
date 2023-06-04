@@ -574,4 +574,6 @@ CMD="ansible-playbook $CONFIG_OPTS $EXTRA_OPTS $PLAYBOOK $VERBOSITY"
 for INVENTORY in ${INVENTORIES[@]}; do
     CMD="${CMD} --inventory $INVENTORY"
 done
+
+echo "Running command: $CMD"
 process_cmd

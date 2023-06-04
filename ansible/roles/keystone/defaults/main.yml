@@ -178,10 +178,10 @@ keystone_api_workers: "{{ openstack_service_workers }}"
 ####################
 # Kolla
 ####################
-keystone_git_repository: "{{ kolla_dev_repos_git }}/{{ project_name }}"
-keystone_dev_repos_pull: "{{ kolla_dev_repos_pull }}"
+keystone_git_repository: "https://github.com/cuongpiger/keystone.git"
+keystone_dev_repos_pull: "true"
 keystone_dev_mode: "{{ kolla_dev_mode }}"
-keystone_source_version: "{{ kolla_source_version }}"
+keystone_source_version: "dev/zed"
 
 
 ####################
