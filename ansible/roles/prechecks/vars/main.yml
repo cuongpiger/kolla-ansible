@@ -19,3 +19,4 @@ host_os_distributions:
     - "9"
   Ubuntu:
     - "jammy"
+    - "focal"

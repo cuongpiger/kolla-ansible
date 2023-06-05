@@ -508,6 +508,8 @@ rabbitmq_prometheus_port: "15692"
 redis_port: "6379"
 redis_sentinel_port: "26379"
 
+jaeger_port: "6831"
+
 sahara_api_port: "8386"
 
 senlin_internal_fqdn: "{{ kolla_internal_fqdn }}"
@@ -804,15 +806,15 @@ redis_connection_string_extras: "&db=0&socket_timeout=60&retry_on_timeout=yes"
 ####################
 # Jaeger options
 ####################
-jaeger_connection_string: "jaeger://{{ jaeger_address | put_address_in_context('url') }}:{{ jaeger_port }}"
+jaeger_connection_string: "jaeger://{% for host in groups['jaeger'] %}{% if host == groups['jaeger'][0] %}{{ 'api' | kolla_address(host) | put_address_in_context('url') }}:{{ jaeger_port }}{% endif %}{% endfor %}"
 
 ####################
 # Osprofiler options
 ####################
 # valid values: ["elasticsearch", "redis"]
-osprofiler_backend: "elasticsearch"
+osprofiler_backend: "jaeger"
 opensearch_connection_string: "elasticsearch://{{ opensearch_address | put_address_in_context('url') }}:{{ opensearch_port }}"
-osprofiler_backend_connection_string: "{{ redis_connection_string if osprofiler_backend == 'redis' else opensearch_connection_string }}"
+osprofiler_backend_connection_string: "{{ jaeger_connection_string if osprofiler_backend == 'jaeger' else opensearch_connection_string }}"
 
 ####################
 # RabbitMQ options
