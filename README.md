@@ -1,7 +1,14 @@
 # 1. Pre-requisites
 * Anaconda - following this link to install it on Linux machine [https://docs.anaconda.com/free/anaconda/install/linux](https://docs.anaconda.com/free/anaconda/install/linux/)
 * Ubuntu 22.04
-* Docker
+* Docker - following the below steps to install Docker on Ubuntu 22.04:
+  ```bash=
+  curl -fsSL https://get.docker.com -o get-docker.sh && \
+  sh get-docker.sh && \
+  sudo usermod -a -G docker $USER && \
+  sudo chmod 666 /var/run/docker.sock && \
+  rm get-docker.sh
+  ```
 
 # 2. Prepare environment
 * Create Python 2.7 environment for Kolla Ansible project using Anaconda:
