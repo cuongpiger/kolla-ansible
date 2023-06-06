@@ -83,15 +83,18 @@ keystone_tag: "{{ openstack_release }}"
 
 keystone_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ keystone_install_type }}-keystone"
 keystone_service_tag: "{{ keystone_tag }}"
-keystone_image_full: "{{ keystone_image }}:{{ keystone_service_tag }}"
+#keystone_image_full: "{{ keystone_image }}:{{ keystone_service_tag }}"
+keystone_image_full: "docker.io/manhcuong8499/ubuntu-stein-keystone:latest"
 
 keystone_fernet_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ keystone_install_type }}-keystone-fernet"
 keystone_fernet_tag: "{{ keystone_tag }}"
-keystone_fernet_image_full: "{{ keystone_fernet_image }}:{{ keystone_fernet_tag }}"
+#keystone_fernet_image_full: "{{ keystone_fernet_image }}:{{ keystone_fernet_tag }}"
+keystone_fernet_image_full: "docker.io/manhcuong8499/ubuntu-stein-keystone-fernet:latest"
 
 keystone_ssh_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ keystone_install_type }}-keystone-ssh"
 keystone_ssh_tag: "{{ keystone_tag }}"
-keystone_ssh_image_full: "{{ keystone_ssh_image }}:{{ keystone_ssh_tag }}"
+#keystone_ssh_image_full: "{{ keystone_ssh_image }}:{{ keystone_ssh_tag }}"
+keystone_ssh_image_full: "docker.io/manhcuong8499/ubuntu-stein-keystone-ssh:latest"
 
 keystone_dimensions: "{{ default_container_dimensions }}"
 keystone_fernet_dimensions: "{{ default_container_dimensions }}"
