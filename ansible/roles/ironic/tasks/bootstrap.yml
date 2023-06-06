@@ -2,12 +2,11 @@
 - name: Creating Ironic database
   become: true
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: mysql_db
     module_args:
       login_host: "{{ database_address }}"
       login_port: "{{ database_port }}"
-      login_user: "{{ ironic_database_shard_root_user }}"
+      login_user: "{{ database_user }}"
       login_password: "{{ database_password }}"
       name: "{{ item.database_name }}"
   run_once: True
@@ -24,12 +23,11 @@
 - name: Creating Ironic database user and setting permissions
   become: true
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: mysql_user
     module_args:
       login_host: "{{ database_address }}"
       login_port: "{{ database_port }}"
-      login_user: "{{ ironic_database_shard_root_user }}"
+      login_user: "{{ database_user }}"
       login_password: "{{ database_password }}"
       name: "{{ item.database_user }}"
       password: "{{ item.database_password }}"
@@ -54,3 +52,22 @@
     - inventory_hostname in groups[item.group]
 
 - import_tasks: bootstrap_service.yml
+
+- name: Running Ironic-PXE bootstrap container
+  vars:
+    ironic_pxe: "{{ ironic_services['ironic-pxe'] }}"
+  become: true
+  kolla_docker:
+    action: "start_container"
+    common_options: "{{ docker_common_options }}"
+    detach: False
+    environment:
+      KOLLA_BOOTSTRAP:
+      KOLLA_CONFIG_STRATEGY: "{{ config_strategy }}"
+    image: "{{ ironic_pxe.image }}"
+    labels:
+      BOOTSTRAP:
+    name: "bootstrap_ironic_pxe"
+    restart_policy: "never"
+    volumes: "{{ ironic_pxe.volumes }}"
+  when: inventory_hostname in groups[ironic_pxe.group]

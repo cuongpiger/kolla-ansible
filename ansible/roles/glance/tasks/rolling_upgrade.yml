@@ -1,29 +1,29 @@
 ---
-- name: Start Glance upgrade
-  set_fact:
+- set_fact:
     glance_upgrading: True
 
 # Upgrade first node (NEW NODE in the Glance documentation)
 - include_tasks: config.yml
-  when: inventory_hostname == glance_api_hosts[0]
+  when: inventory_hostname == groups["glance-api"][0]
 
 - include_tasks: stop_service.yml
-  when: inventory_hostname == glance_api_hosts[0]
+  when: inventory_hostname == groups["glance-api"][0]
 
 - name: Enable log_bin_trust_function_creators function
+  vars:
+    glance_api: "{{ glance_services['glance-api'] }}"
   become: true
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: mysql_variables
     module_args:
       login_host: "{{ database_address }}"
       login_port: "{{ database_port }}"
-      login_user: "{{ glance_database_shard_root_user }}"
+      login_user: "{{ database_user }}"
       login_password: "{{ database_password }}"
       variable: log_bin_trust_function_creators
       value: 1
   run_once: True
-  delegate_to: "{{ glance_api_hosts[0] }}"
+  delegate_to: "{{ groups[glance_api.group][0] }}"
   when:
     - not use_preconfigured_databases | bool
 
@@ -43,10 +43,10 @@
     labels:
       BOOTSTRAP:
     name: "bootstrap_glance"
-    restart_policy: no
-    volumes: "{{ glance_api.volumes | reject('equalto', '') | list }}"
+    restart_policy: "never"
+    volumes: "{{ glance_api.volumes|reject('equalto', '')|list }}"
   run_once: True
-  delegate_to: "{{ glance_api_hosts[0] }}"
+  delegate_to: "{{ groups[glance_api.group][0] }}"
 
 - name: Running Glance database migrate container
   vars:
@@ -64,18 +64,16 @@
     labels:
       BOOTSTRAP:
     name: "bootstrap_glance"
-    restart_policy: no
-    volumes: "{{ glance_api.volumes | reject('equalto', '') | list }}"
+    restart_policy: "never"
+    volumes: "{{ glance_api.volumes|reject('equalto', '')|list }}"
   run_once: True
-  delegate_to: "{{ glance_api_hosts[0] }}"
+  delegate_to: "{{ groups[glance_api.group][0] }}"
   notify:
     - Restart glance-api container
 
 # Upgrade remaining node
 - include_tasks: config.yml
-  when: inventory_hostname != glance_api_hosts[0]
-
-- import_tasks: check-containers.yml
+  when: inventory_hostname != groups["glance-api"][0]
 
 - name: Flush handlers
   meta: flush_handlers
@@ -96,28 +94,28 @@
     labels:
       BOOTSTRAP:
     name: "bootstrap_glance"
-    restart_policy: no
-    volumes: "{{ glance_api.volumes | reject('equalto', '') | list }}"
+    restart_policy: "never"
+    volumes: "{{ glance_api.volumes|reject('equalto', '')|list }}"
   run_once: True
-  delegate_to: "{{ glance_api_hosts[0] }}"
+  delegate_to: "{{ groups[glance_api.group][0] }}"
 
 - name: Disable log_bin_trust_function_creators function
+  vars:
+    glance_api: "{{ glance_services['glance-api'] }}"
   become: true
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: mysql_variables
     module_args:
       login_host: "{{ database_address }}"
       login_port: "{{ database_port }}"
-      login_user: "{{ glance_database_shard_root_user }}"
+      login_user: "{{ database_user }}"
       login_password: "{{ database_password }}"
       variable: log_bin_trust_function_creators
       value: 0
   run_once: True
-  delegate_to: "{{ glance_api_hosts[0] }}"
+  delegate_to: "{{ groups[glance_api.group][0] }}"
   when:
     - not use_preconfigured_databases | bool
 
-- name: Finish Glance upgrade
-  set_fact:
+- set_fact:
     glance_upgrading: False

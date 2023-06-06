@@ -40,18 +40,19 @@ choice. Various downloads can be found at the `Vagrant downloads
 
 Install required dependencies as follows:
 
-For CentOS or RHEL 8:
+For CentOS 7 or later:
 
 .. code-block:: console
 
-   sudo dnf install ruby-devel libvirt-devel zlib-devel libpng-devel gcc \
-   qemu-kvm qemu-img libvirt python3-libvirt libvirt-client virt-install git
+   sudo yum install ruby-devel libvirt-devel zlib-devel libpng-devel gcc \
+   qemu-kvm qemu-img libvirt libvirt-python libvirt-client virt-install \
+   bridge-utils git
 
 For Ubuntu 16.04 or later:
 
 .. code-block:: console
 
-   sudo apt install vagrant ruby-dev ruby-libvirt python-libvirt \
+   sudo apt-get install vagrant ruby-dev ruby-libvirt python-libvirt \
    qemu-utils qemu-kvm libvirt-dev nfs-kernel-server zlib1g-dev libpng12-dev \
    gcc git
 
@@ -246,8 +247,7 @@ Validate OpenStack is operational:
 .. code-block:: console
 
    kolla-ansible post-deploy
-   export OS_CLIENT_CONFIG_FILE=/etc/kolla/clouds.yaml
-   export OS_CLOUD=kolla-admin
+   . /etc/kolla/admin-openrc.sh
    openstack user list
 
 Or navigate to ``http://172.28.128.254/`` with a web browser.

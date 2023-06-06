@@ -1,78 +1,51 @@
 ---
 - project:
-    queue: kolla
     templates:
       - check-requirements
+      - deploy-guide-jobs
       - openstack-cover-jobs
-      - openstack-python3-jobs
-      - ansible-role-jobs
+      - openstack-python-jobs
+      - openstack-python36-jobs
+      - openstack-python37-jobs
       - publish-openstack-docs-pti
       - release-notes-jobs-python3
-      - periodic-stable-jobs
     check:
       jobs:
-        - kolla-ansible-centos9s
-        - kolla-ansible-debian
-        - kolla-ansible-openeuler
-        - kolla-ansible-rocky9
-        - kolla-ansible-ubuntu
-        - kolla-ansible-rocky9-kvm
-        - kolla-ansible-ubuntu-kvm
-        - kolla-ansible-rocky9-multinode-ipv6
-        - kolla-ansible-ubuntu-multinode-ipv6
-        - kolla-ansible-rocky9-bifrost
-        - kolla-ansible-ubuntu-bifrost
-        - kolla-ansible-rocky9-zun
-        - kolla-ansible-debian-zun
-        - kolla-ansible-ubuntu-zun
-        - kolla-ansible-rocky9-swift
-        - kolla-ansible-ubuntu-swift
-        - kolla-ansible-rocky9-scenario-nfv
-        - kolla-ansible-rocky9-magnum
-        - kolla-ansible-ubuntu-magnum
-        - kolla-ansible-rocky9-octavia
-        - kolla-ansible-ubuntu-octavia
-        - kolla-ansible-rocky9-masakari
-        - kolla-ansible-ubuntu-masakari
-        - kolla-ansible-rocky9-ironic
-        - kolla-ansible-debian-ironic
-        - kolla-ansible-ubuntu-ironic
-        - kolla-ansible-rocky9-upgrade
-        - kolla-ansible-debian-upgrade
-        - kolla-ansible-ubuntu-upgrade
-        - kolla-ansible-ubuntu-binary-upgrade
-        - kolla-ansible-ubuntu-cells
-        - kolla-ansible-rocky9-cells
-        - kolla-ansible-rocky9-mariadb
-        - kolla-ansible-ubuntu-mariadb
-        - kolla-ansible-rocky9-ovn
-        - kolla-ansible-ubuntu-ovn
-        - kolla-ansible-rocky9-upgrade-ovn
-        - kolla-ansible-ubuntu-upgrade-ovn
-        - kolla-ansible-rocky9-prometheus-opensearch
-        - kolla-ansible-ubuntu-prometheus-opensearch
-        - kolla-ansible-rocky9-prometheus-opensearch-upgrade
-        - kolla-ansible-ubuntu-prometheus-opensearch-upgrade
-        - kolla-ansible-rocky9-venus
-        - kolla-ansible-ubuntu-venus
-        - kolla-ansible-rocky9-cephadm
-        - kolla-ansible-ubuntu-cephadm
-        - kolla-ansible-rocky9-upgrade-cephadm
-        - kolla-ansible-ubuntu-upgrade-cephadm
-        - kolla-ansible-rocky9-hashi-vault
-    check-arm64:
-      jobs:
-        - kolla-ansible-debian-aarch64
-        - kolla-ansible-debian-upgrade-aarch64
+        - kolla-ansible-centos-source
+        - kolla-ansible-ubuntu-source
+        - kolla-ansible-ubuntu-source-ceph
+        - kolla-ansible-centos-source-ceph
+        - kolla-ansible-ubuntu-source-cinder-lvm:
+            files: ^ansible\/roles\/(cinder|iscsi)\/.*
+        - kolla-ansible-centos-source-cinder-lvm:
+            files: ^ansible\/roles\/(cinder|iscsi)\/.*
+        - kolla-ansible-bifrost-centos-source:
+            files: ^ansible\/roles\/bifrost\/.*
+        - kolla-ansible-ubuntu-source-zun:
+            files: ^ansible\/roles\/(zun|kuryr)\/.*
+        - kolla-ansible-centos-source-scenario-nfv:
+            files:
+              - ^ansible/roles/(barbican|heat|mistral|redis|tacker)/
+              - ^tests/test-scenario-nfv.sh
+        - kolla-ansible-centos-source-ironic
+        - kolla-ansible-centos-binary-ironic
+        - kolla-ansible-ubuntu-source-ironic
+        - kolla-ansible-centos-source-upgrade
+        - kolla-ansible-ubuntu-source-upgrade
+        - kolla-ansible-centos-source-upgrade-ceph
+        - kolla-ansible-ubuntu-source-upgrade-ceph
+        - kolla-ansible-centos-binary
+        - kolla-ansible-ubuntu-binary
+        - kolla-ansible-centos-source-mariadb:
+            files:
+              - ^ansible/roles/mariadb/
+              - ^tests/test-mariadb.sh
+        - kolla-ansible-ubuntu-source-mariadb:
+            files:
+              - ^ansible/roles/mariadb/
+              - ^tests/test-mariadb.sh
     gate:
+      queue: kolla
       jobs:
-        - kolla-ansible-debian
-        - kolla-ansible-debian-upgrade
-        - kolla-ansible-rocky9
-        - kolla-ansible-rocky9-upgrade
-        - kolla-ansible-ubuntu
-        - kolla-ansible-ubuntu-upgrade
-    experimental:
-      jobs:
-        - kolla-ansible-rocky9-swift-upgrade
-        - kolla-ansible-ubuntu-swift-upgrade
+        - kolla-ansible-centos-source
+        - kolla-ansible-ubuntu-source

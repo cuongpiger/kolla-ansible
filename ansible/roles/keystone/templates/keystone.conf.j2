@@ -1,5 +1,8 @@
 [DEFAULT]
 debug = {{ keystone_logging_debug }}
+{% if enable_cadf_notifications | bool %}
+notification_format = cadf
+{% endif %}
 
 transport_url = {{ rpc_transport_url }}
 
@@ -29,7 +32,7 @@ domain_config_dir = /etc/keystone/domains
 
 [token]
 revoke_by_id = False
-provider = fernet
+provider = {{ keystone_token_provider }}
 expiration = {{ fernet_token_expiry }}
 allow_expired_window = {{ fernet_token_allow_expired_window }}
 
@@ -48,25 +51,12 @@ max_active_keys = {{ ((fernet_token_expiry | int +
 [cache]
 backend = oslo_cache.memcache_pool
 enabled = True
-memcache_servers = {% for host in groups['memcached'] %}{{ 'api' | kolla_address(host) | put_address_in_context('memcache') }}:{{ memcached_port }}{% if not loop.last %},{% endif %}{% endfor %}
+memcache_servers = {% for host in groups['memcached'] %}{{ hostvars[host]['ansible_' + hostvars[host]['api_interface']]['ipv4']['address'] }}:{{ memcached_port }}{% if not loop.last %},{% endif %}{% endfor %}
 
 [oslo_messaging_notifications]
 transport_url = {{ notify_transport_url }}
-{% if keystone_enabled_notification_topics %}
+{% if enable_cadf_notifications | bool %}
 driver = messagingv2
-topics = {{ keystone_enabled_notification_topics | map(attribute='name') | join(',') }}
-{% else %}
-driver = noop
-{% endif %}
-
-[oslo_messaging_rabbit]
-heartbeat_in_pthread = {{ service_name == 'keystone' }}
-{% if om_enable_rabbitmq_tls | bool %}
-ssl = true
-ssl_ca_file = {{ om_rabbitmq_cacert }}
-{% endif %}
-{% if om_enable_rabbitmq_high_availability | bool %}
-amqp_durable_queues = true
 {% endif %}
 
 {% if enable_osprofiler | bool %}
@@ -79,20 +69,5 @@ connection_string = {{ osprofiler_backend_connection_string }}
 
 {% if enable_grafana | bool %}
 [cors]
-allowed_origin = {{ grafana_public_endpoint }}
-{% endif %}
-
-{% if enable_keystone_federation %}
-[federation]
-{% for dashboard in keystone_trusted_dashboards %}
-trusted_dashboard = {{ dashboard }}
-{% endfor %}
-
-sso_callback_template = /etc/keystone/sso_callback_template.html
-
-[openid]
-remote_id_attribute = {{ keystone_remote_id_attribute_oidc }}
-
-[auth]
-methods = password,token,openid,application_credential
+allowed_origin = {{ public_protocol }}://{{ kolla_external_fqdn }}:{{ grafana_server_port }}
 {% endif %}

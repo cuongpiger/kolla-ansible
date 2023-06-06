@@ -1,8 +1,8 @@
 .. _swift-guide:
 
-==============================
-Swift - Object storage service
-==============================
+=============================
+Swift- Object storage service
+=============================
 
 Overview
 ~~~~~~~~
@@ -13,18 +13,18 @@ Kolla can deploy a full working Swift setup in either a **all-in-one** or
 Networking
 ~~~~~~~~~~
 
-The following interfaces are used by Swift:
+The following networks are used by Swift:
 
-External API interface (``kolla_external_vip_interface``)
-  This interface is used by users to access the Swift public API.
-Internal API interface (``api_interface``)
-  This interface is used by users to access the Swift internal API. It is also
+External API network (``kolla_external_vip_interface``)
+  This network is used by users to access the Swift public API.
+Internal API network (``api_interface``)
+  This network is used by users to access the Swift internal API. It is also
   used by HAProxy to access the Swift proxy servers.
-Swift Storage interface (``swift_storage_interface``)
-  This interface is used by the Swift proxy server to access the account,
-  container and object servers.
-Swift replication interface (``swift_replication_interface``)
-  This interface is used for Swift storage replication traffic.
+Swift Storage network (``swift_storage_interface``)
+  This network is used by the Swift proxy server to access the account,
+  container and object servers. Defaults to ``storage_interface``.
+Swift replication network (``swift_replication_network``)
+  This network is used for Swift storage replication traffic.
   This is optional as the default configuration uses
   the ``swift_storage_interface`` for replication traffic.
 
@@ -107,7 +107,7 @@ the environment variable and create ``/etc/kolla/config/swift`` directory:
 .. code-block:: console
 
    STORAGE_NODES=(192.168.0.2 192.168.0.3 192.168.0.4)
-   KOLLA_SWIFT_BASE_IMAGE="kolla/centos-source-swift-base:4.0.0"
+   KOLLA_SWIFT_BASE_IMAGE="kolla/oraclelinux-source-swift-base:4.0.0"
    mkdir -p /etc/kolla/config/swift
 
 Generate Object Ring
@@ -215,16 +215,6 @@ Enable Swift in ``/etc/kolla/globals.yml``:
 
    enable_swift : "yes"
 
-If you are to deploy multiple policies, override the variable
-``swift_extra_ring_files`` with the list of your custom ring files, .builder
-and .ring.gz all together. This will append them to the list of default rings.
-
-.. code-block:: yaml
-
-   swift_extra_ring_files:
-      - object-1.builder
-      - object-1.ring.gz
-
 Once the rings are in place, deploying Swift is the same as any other Kolla
 Ansible service:
 
@@ -276,40 +266,3 @@ A very basic smoke test:
    | Containers | 1                                     |
    | Objects    | 1                                     |
    +------------+---------------------------------------+
-
-S3 API
-~~~~~~
-
-The Swift S3 API can be enabled by setting ``enable_swift_s3api`` to ``true``
-in ``globals.yml``. It is disabled by default. In order to use this API it is
-necessary to obtain EC2 credentials from Keystone. See the :swift-doc:`the
-Swift documentation
-<admin/middleware.html#module-swift.common.middleware.s3api.s3api>` for
-details.
-
-Swift Recon
-~~~~~~~~~~~
-
-Enable Swift Recon in ``/etc/kolla/globals.yml``:
-
-.. code-block:: yaml
-
-   enable_swift_recon : "yes"
-
-
-The Swift role in Kolla Ansible is still using the old role format. Unlike many
-other Kolla Ansible roles, it won't automatically add the new volume to the
-containers in existing deployments when running `kolla-ansible reconfigure`.
-Instead we must use the `kolla-ansible upgrade` command, which will remove the
-existing containers and then put them back again.
-
-Example usage:
-
-.. code-block:: console
-
-   $ sudo docker exec swift_object_server swift-recon --all`
-
-
-
-For more information, see :swift-doc:`the Swift documentation
-<admin/objectstorage-monitoring.html>`.

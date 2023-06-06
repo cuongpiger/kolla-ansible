@@ -12,14 +12,18 @@
     - item.value.enabled | bool
   with_dict: "{{ gnocchi_services }}"
 
+- include_tasks: ceph.yml
+  when:
+    - enable_ceph | bool
+    - gnocchi_backend_storage == 'ceph'
+
 - include_tasks: external_ceph.yml
   when:
+    - enable_ceph | bool == False
     - gnocchi_backend_storage == 'ceph'
 
 - name: Check if policies shall be overwritten
-  stat:
-    path: "{{ item }}"
-  delegate_to: localhost
+  local_action: stat path="{{ item }}"
   run_once: True
   register: gnocchi_policy
   with_first_found:
@@ -35,22 +39,21 @@
   when:
     - gnocchi_policy.results
 
-- include_tasks: copy-certs.yml
-  when:
-    - kolla_copy_ca_into_containers | bool
-
 - name: Copying over config.json files for services
   template:
     src: "{{ item.key }}.json.j2"
     dest: "{{ node_config_directory }}/{{ item.key }}/config.json"
     mode: "0660"
   become: true
+  register: gnocchi_config_jsons
   when:
     - item.value.enabled | bool
     - inventory_hostname in groups[item.value.group]
   with_dict: "{{ gnocchi_services }}"
   notify:
-    - Restart {{ item.key }} container
+    - Restart gnocchi-api container
+    - Restart gnocchi-metricd container
+    - Restart gnocchi-statsd container
 
 - name: Copying over gnocchi.conf
   vars:
@@ -65,12 +68,15 @@
     dest: "{{ node_config_directory }}/{{ item.key }}/gnocchi.conf"
     mode: "0660"
   become: true
+  register: gnocchi_confs
   when:
     - item.value.enabled | bool
     - inventory_hostname in groups[item.value.group]
   with_dict: "{{ gnocchi_services }}"
   notify:
-    - Restart {{ item.key }} container
+    - Restart gnocchi-api container
+    - Restart gnocchi-metricd container
+    - Restart gnocchi-statsd container
 
 - name: Copying over wsgi-gnocchi.conf
   vars:
@@ -80,6 +86,7 @@
     dest: "{{ node_config_directory }}/{{ item }}/wsgi-gnocchi.conf"
     mode: "0660"
   become: true
+  register: gnocchi_wsgi_conf
   when:
     - inventory_hostname in groups['gnocchi-api']
     - service.enabled | bool
@@ -94,10 +101,33 @@
     dest: "{{ node_config_directory }}/{{ item.key }}/{{ gnocchi_policy_file }}"
     mode: "0660"
   become: true
+  register: gnocchi_policy_overwriting
   when:
     - gnocchi_policy_file is defined
     - inventory_hostname in groups[item.value.group]
     - item.value.enabled | bool
   with_dict: "{{ gnocchi_services }}"
   notify:
-    - Restart {{ item.key }} container
+    - Restart gnocchi-api container
+    - Restart gnocchi-metricd container
+    - Restart gnocchi-statsd container
+
+- name: Check gnocchi containers
+  become: true
+  kolla_docker:
+    action: "compare_container"
+    common_options: "{{ docker_common_options }}"
+    name: "{{ item.value.container_name }}"
+    image: "{{ item.value.image }}"
+    volumes: "{{ item.value.volumes }}"
+    dimensions: "{{ item.value.dimensions }}"
+  register: check_gnocchi_containers
+  when:
+    - kolla_action != "config"
+    - inventory_hostname in groups[item.value.group]
+    - item.value.enabled | bool
+  with_dict: "{{ gnocchi_services }}"
+  notify:
+    - Restart gnocchi-api container
+    - Restart gnocchi-metricd container
+    - Restart gnocchi-statsd container

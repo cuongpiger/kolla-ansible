@@ -11,11 +11,6 @@ reporting-disabled = true
   wal-dir = "/var/lib/influxdb/wal"
   wal-logging-enabled = true
   data-logging-enabled = true
-{% if influxdb_enable_tsi | bool %}
-  index-version = "tsi1"
-{% else %}
-  index-version = "inmem"
-{% endif %}
 [coordinator]
   write-timeout = "10s"
   max-concurrent-queries = 0
@@ -36,7 +31,7 @@ reporting-disabled = true
   store-interval = "10s"
 [http]
   enabled = true
-  bind-address = "{{ api_interface_address | put_address_in_context('url') }}:{{ influxdb_http_port }}"
+  bind-address = "{{ api_interface_address }}:{{ influxdb_http_port }}"
   auth-enabled = false
   log-enabled = true
   write-tracing = false

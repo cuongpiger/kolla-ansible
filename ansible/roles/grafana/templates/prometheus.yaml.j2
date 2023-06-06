@@ -5,7 +5,5 @@ datasources:
   type: prometheus
   access: proxy
   orgId: 1
-  url: {{ grafana_prometheus_url }}
+  url: http://{{ kolla_internal_vip_address }}:{{ prometheus_port }}
   version: 1
-  jsonData:
-    timeInterval: {{ prometheus_scrape_interval }}

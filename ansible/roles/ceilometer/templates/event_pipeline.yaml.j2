@@ -11,3 +11,6 @@ sinks:
 {% if enable_gnocchi | bool %}
           - gnocchi://
 {% endif %}
+{% if enable_panko | bool %}
+          - panko://
+{% endif %}

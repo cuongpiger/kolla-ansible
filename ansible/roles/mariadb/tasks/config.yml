@@ -40,17 +40,19 @@
     - inventory_hostname == mariadb_backup_host
 
 - name: Copying over config.json files for services
+  vars:
+    service_name: "mariadb"
+    service: "{{ mariadb_services[service_name] }}"
   template:
-    src: "{{ item.key }}.json.j2"
-    dest: "{{ node_config_directory }}/{{ item.key }}/config.json"
+    src: "{{ service_name }}.json.j2"
+    dest: "{{ node_config_directory }}/{{ service_name }}/config.json"
     mode: "0660"
   become: true
   when:
-    - inventory_hostname in groups[item.value.group]
-    - item.value.enabled | bool
-  with_dict: "{{ mariadb_services }}"
+    - inventory_hostname in groups[service.group]
+    - service.enabled | bool
   notify:
-    - "restart {{ item.key }}"
+    - restart mariadb
 
 - name: Copying over config.json files for mariabackup
   vars:
@@ -79,5 +81,35 @@
   when:
     - inventory_hostname in groups[service.group]
     - service.enabled | bool
+  notify:
+    - restart mariadb
+
+- name: Copying over wsrep-notify.sh
+  template:
+    src: "{{ role_path }}/templates/wsrep-notify.sh.j2"
+    dest: "{{ node_config_directory }}/{{ item.key }}/wsrep-notify.sh"
+    mode: "0770"
+  become: true
+  when:
+    - inventory_hostname in groups[item.value.group]
+    - item.value.enabled | bool
+  with_dict: "{{ mariadb_services }}"
+  notify:
+    - restart mariadb
+
+- name: Check mariadb containers
+  become: true
+  kolla_docker:
+    action: "compare_container"
+    common_options: "{{ docker_common_options }}"
+    name: "{{ item.value.container_name }}"
+    image: "{{ item.value.image }}"
+    volumes: "{{ item.value.volumes }}"
+    dimensions: "{{ item.value.dimensions }}"
+  when:
+    - kolla_action != "config"
+    - inventory_hostname in groups[item.value.group]
+    - item.value.enabled | bool
+  with_dict: "{{ mariadb_services }}"
   notify:
     - restart mariadb

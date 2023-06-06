@@ -3,8 +3,6 @@
 
 - import_tasks: config.yml
 
-- import_tasks: check-containers.yml
-
 - include_tasks: clone.yml
   when:
     - glance_dev_mode | bool
@@ -13,3 +11,5 @@
 
 - name: Flush handlers
   meta: flush_handlers
+
+- import_tasks: check.yml

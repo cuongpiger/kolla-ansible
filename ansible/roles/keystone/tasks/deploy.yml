@@ -1,8 +1,6 @@
 ---
 - import_tasks: config.yml
 
-- import_tasks: check-containers.yml
-
 - include_tasks: clone.yml
   when:
     - keystone_dev_mode | bool
@@ -12,10 +10,10 @@
 - name: Flush handlers
   meta: flush_handlers
 
-- include_tasks: distribute_fernet.yml
+- include_tasks: init_fernet.yml
+  when:
+    - keystone_token_provider == 'fernet'
 
 - import_tasks: register.yml
 
-- include_tasks: register_identity_providers.yml
-  when:
-    - enable_keystone_federation | bool
+- import_tasks: check.yml

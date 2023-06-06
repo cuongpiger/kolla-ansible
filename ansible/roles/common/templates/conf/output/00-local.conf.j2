@@ -1,81 +1,73 @@
-{% for item in syslog_facilities | selectattr('enabled') %}
-<match syslog.{{ item.facility }}.**>
+<match syslog.{{ syslog_swift_facility }}.**>
   @type copy
   <store>
     @type file
-    path /var/log/kolla/{{ item.logdir }}/{{ item.logfile }}
+    path /var/log/kolla/swift/swift_latest.*.log
+    utc
     append true
-    # Disable timestamp in filename for logs
-    <buffer []>
-      path /var/log/kolla/{{ item.logdir }}/{{ item.logfile }}.*.buffer
-    </buffer>
-    <format>
-      output_tag {{ item.output_tag | default(false) | lower }}
-      output_time {{ item.output_time | default(false) | lower }}
-    </format>
+    compress gzip
   </store>
 {% if log_direct_to_elasticsearch %}
   <store>
-       @type elasticsearch
+       type elasticsearch
        host {{ elasticsearch_address }}
-       port {{ elasticsearch_port | default('9200') }}
-       scheme {{ fluentd_elasticsearch_scheme }}
-{% if fluentd_elasticsearch_path != '' %}
-       path {{ fluentd_elasticsearch_path }}
-{% endif %}
-{% if fluentd_elasticsearch_scheme == 'https' %}
-       ssl_version {{ fluentd_elasticsearch_ssl_version }}
-       ssl_verify {{ fluentd_elasticsearch_ssl_verify }}
-{% if fluentd_elasticsearch_cacert | length > 0 %}
-       ca_file {{ fluentd_elasticsearch_cacert }}
-{% endif %}
-{% endif %}
-{% if fluentd_elasticsearch_user != '' and fluentd_elasticsearch_password != ''%}
-       user {{ fluentd_elasticsearch_user }}
-       password {{ fluentd_elasticsearch_password }}
-{% endif %}
+       port {{ elasticsearch_port }}
        logstash_format true
-       logstash_prefix {{ opensearch_log_index_prefix }}
+       logstash_prefix {{ kibana_log_prefix }}
+       flush_interval 15s
        reconnect_on_error true
-       request_timeout {{ fluentd_elasticsearch_request_timeout }}
-       suppress_type_name true
-       <buffer>
-         @type file
-         path /var/lib/fluentd/data/elasticsearch.buffer/{{ item.facility }}.*
-         flush_interval 15s
-       </buffer>
+       buffer_type file
+       buffer_path /var/lib/fluentd/data/elasticsearch.buffer/{{ syslog_swift_facility }}.*
   </store>
-{% elif log_direct_to_opensearch %}
+{% elif enable_monasca | bool %}
   <store>
-       @type opensearch
-       host {{ opensearch_address }}
-       port {{ opensearch_port }}
-       scheme {{ fluentd_opensearch_scheme }}
-{% if fluentd_opensearch_path != '' %}
-       path {{ fluentd_opensearch_path }}
-{% endif %}
-{% if fluentd_opensearch_scheme == 'https' %}
-       ssl_version {{ fluentd_opensearch_ssl_version }}
-       ssl_verify {{ fluentd_opensearch_ssl_verify }}
-{% if fluentd_opensearch_cacert | length > 0 %}
-       ca_file {{ fluentd_opensearch_cacert }}
-{% endif %}
-{% endif %}
-{% if fluentd_opensearch_user != '' and fluentd_opensearch_password != ''%}
-       user {{ fluentd_opensearch_user }}
-       password {{ fluentd_opensearch_password }}
-{% endif %}
-       logstash_format true
-       logstash_prefix {{ opensearch_log_index_prefix }}
-       reconnect_on_error true
-       request_timeout {{ fluentd_opensearch_request_timeout }}
-       suppress_type_name true
-       <buffer>
-         @type file
-         path /var/lib/fluentd/data/opensearch.buffer/{{ item.facility }}.*
-         flush_interval 15s
-       </buffer>
-    </store>
+     @type monasca
+     keystone_url {{ keystone_internal_url }}
+     monasca_log_api {{ internal_protocol }}://{{ kolla_internal_fqdn }}:{{ monasca_log_api_port }}
+     monasca_log_api_version v3.0
+     username {{ monasca_agent_user }}
+     password {{ monasca_agent_password }}
+     domain_id default
+     project_name {{ monasca_control_plane_project }}
+     message_field_name Payload
+  </store>
 {% endif %}
 </match>
-{% endfor %}
+
+<match syslog.{{ syslog_haproxy_facility }}.**>
+  @type copy
+  <store>
+    @type file
+    path /var/log/kolla/haproxy/haproxy_latest.*.log
+    output_tag false
+    output_time false
+    utc
+    append true
+    compress gzip
+  </store>
+{% if log_direct_to_elasticsearch %}
+  <store>
+       type elasticsearch
+       host {{ elasticsearch_address }}
+       port {{ elasticsearch_port }}
+       logstash_format true
+       logstash_prefix {{ kibana_log_prefix }}
+       flush_interval 15s
+       reconnect_on_error true
+       buffer_type file
+       buffer_path /var/lib/fluentd/data/elasticsearch.buffer/{{ syslog_haproxy_facility }}.*
+  </store>
+{% elif enable_monasca | bool %}
+  <store>
+     @type monasca
+     keystone_url {{ keystone_internal_url }}
+     monasca_log_api {{ internal_protocol }}://{{ kolla_internal_fqdn }}:{{ monasca_log_api_port }}
+     monasca_log_api_version v3.0
+     username {{ monasca_agent_user }}
+     password {{ monasca_agent_password }}
+     domain_id default
+     project_name {{ monasca_control_plane_project }}
+     message_field_name Payload
+  </store>
+{% endif %}
+</match>

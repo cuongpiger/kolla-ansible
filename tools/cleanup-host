@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # Spawning the neutron agents containers leaves artifacts on the host.
 # This script removes these artifacts.
@@ -37,6 +37,14 @@ fi
 echo "Creating a fstab backup..."
 sudo cp /etc/fstab /etc/fstab_backup
 
+echo "Unmounting Ceph OSD disks"
+for mount in $(mount | awk '/\/var\/lib\/ceph/ { print $3 }'); do
+    umount $mount
+done
+
+echo "Removing ceph references from fstab..."
+sudo sed -i '/\/var\/lib\/ceph\/osd\//d' /etc/fstab
+
 if [[ "$enable_swift" == "yes" ]]; then
     echo "Removing swift references from fstab..."
     cat /etc/fstab | grep "/srv/node/d*" | xargs umount
@@ -53,22 +61,17 @@ if [[ "$nova_instance_datadir_volume" != "nova_compute" && -d "$nova_instance_da
     rm -rfv  $nova_instance_datadir_volume
 fi
 
+if [[ "$elasticsearch_datadir_volume" != "elasticsearch" && -d "$elasticsearch_datadir_volume" ]]; then
+    echo "Removing elasticsearch volume if it is customzied"
+    rm -rfv  $elasticsearch_datadir_volume
+fi
+
 if [[ "$gnocchi_metric_datadir_volume" != "gnocchi" && -d "$gnocchi_metric_datadir_volume" ]]; then
     echo "Removing gnocchi volume if it is customzied"
     rm -rfv  $gnocchi_metric_datadir_volume
 fi
 
-if [[ "$influxdb_datadir_volume" != "influxdb" && -d "$influxdb_datadir_volume" ]]; then
-    echo "Removing influxdb volume if it is customzied"
-    rm -rfv  $influxdb_datadir_volume
-fi
-
-if [[ "$opensearch_datadir_volume" != "opensearch" && -d "$opensearch_datadir_volume" ]]; then
-    echo "Removing opensearch volume if it is customzied"
-    rm -rfv  $opensearch_datadir_volume
-fi
-
-FOLDER_PATH="/etc/kolla"
+FOLDER_PATH="/etc/kolla/"
 
 if [[ -e "$FOLDER_PATH/ovsdpdk-db/ovs-dpdkctl.sh" ]]; then
     echo uninstalling ovs-dpdk service files and tools.
@@ -76,13 +79,13 @@ if [[ -e "$FOLDER_PATH/ovsdpdk-db/ovs-dpdkctl.sh" ]]; then
 fi
 
 echo "Getting folders name..."
-for dir in $FOLDER_PATH/*; do
-    if [ "$dir" == "$FOLDER_PATH/passwords.yml" ] || \
-       [ "$dir" == "$FOLDER_PATH/globals.yml" ] || \
-       [ "$dir" == "$FOLDER_PATH/globals.d" ] || \
-       [ "$dir" == "$FOLDER_PATH/kolla-build.conf" ] || \
-       [ "$dir" == "$FOLDER_PATH/config" ] || \
-       [ "$dir" == "$FOLDER_PATH/certificates" ]; then
+for dir in $FOLDER_PATH*; do
+    if [ "$dir" == "$FOLDER_PATH""passwords.yml" ] || \
+       [ "$dir" == "$FOLDER_PATH""globals.yml" ] || \
+       [ "$dir" == "$FOLDER_PATH""kolla-build.conf" ] || \
+       [ "$dir" == "$FOLDER_PATH""config" ] || \
+       [ "$dir" == "$FOLDER_PATH""kolla-cli" ] || \
+       [ "$dir" == "$FOLDER_PATH""certificates" ]; then
         echo "Skipping:" $dir
     else
         rm -rfv $dir

@@ -1,8 +1,6 @@
 ---
 - import_tasks: config.yml
 
-- import_tasks: check-containers.yml
-
 - import_tasks: bootstrap.yml
 
 - name: Flush handlers
@@ -10,4 +8,5 @@
 
 - import_tasks: register.yml
 
+# Test haproxy user through VIP
 - import_tasks: check.yml

@@ -8,12 +8,8 @@
 
 - import_tasks: config.yml
 
-- import_tasks: check-containers.yml
-
 - name: Flush handlers
   meta: flush_handlers
-
-- import_tasks: reload.yml
 
 - name: Running Cinder online schema migration
   vars:
@@ -30,7 +26,7 @@
     labels:
       BOOTSTRAP:
     name: "bootstrap_cinder"
-    restart_policy: no
+    restart_policy: "never"
     volumes: "{{ cinder_api.volumes }}"
   run_once: True
   delegate_to: "{{ groups[cinder_api.group][0] }}"

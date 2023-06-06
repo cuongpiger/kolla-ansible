@@ -3,7 +3,6 @@
     - name: Check if bifrost_deploy container is running
       become: true
       kolla_container_facts:
-        container_engine: "{{ kolla_container_engine }}"
         name:
           - bifrost_deploy
       register: container_facts
@@ -13,11 +12,13 @@
         # order.
         - name: Stop services gracefully
           become: true
-          command: "{{ kolla_container_engine }} exec bifrost_deploy systemctl stop {{ item }}.service"
+          command: docker exec bifrost_deploy systemctl stop {{ item }}.service
           with_items:
-            - ironic
+            - ironic-api
+            - ironic-conductor
             - ironic-inspector
             - mariadb
+            - rabbitmq-server
             - nginx
 
         - name: Stopping bifrost_deploy container

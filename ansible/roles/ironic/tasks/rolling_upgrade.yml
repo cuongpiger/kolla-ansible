@@ -6,8 +6,6 @@
   vars:
     pin_release_version: "{{ openstack_previous_release_name }}"
 
-- import_tasks: check-containers.yml
-
 - import_tasks: bootstrap_service.yml
 
 # TODO(donghm): Flush_handlers to restart ironic services
@@ -20,8 +18,6 @@
 
 # Unpin version
 - import_tasks: config.yml
-
-- import_tasks: check-containers.yml
 
 # Restart ironic services with unpinned release version
 - name: Flush handlers
@@ -42,7 +38,7 @@
     labels:
       BOOTSTRAP:
     name: "bootstrap_ironic"
-    restart_policy: no
+    restart_policy: "never"
     volumes: "{{ ironic_api.volumes }}"
   run_once: True
   delegate_to: "{{ groups[ironic_api.group][0] }}"

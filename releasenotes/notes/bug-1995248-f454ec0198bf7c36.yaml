@@ -1,5 +1,0 @@
----
-fixes:
-  - |
-    Fixes missing logrotate configuration for proxysql logs.
-    `LP#1995248 <https://launchpad.net/bugs/1995248>`__

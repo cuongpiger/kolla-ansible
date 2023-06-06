@@ -1,5 +1,0 @@
----
-features:
-  - |
-    Adds support for setting up arbitrary HAProxy services in
-    active/passive mode.

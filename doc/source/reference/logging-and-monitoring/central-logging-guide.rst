@@ -18,46 +18,42 @@ the following:
 
    enable_central_logging: "yes"
 
-OpenSearch
-~~~~~~~~~~
+Elasticsearch
+~~~~~~~~~~~~~
 
-Kolla deploys OpenSearch to store, organize and make logs easily accessible.
+Kolla deploys Elasticsearch as part of the E*K stack to store, organize
+and make logs easily accessible.
 
-By default OpenSearch is deployed on port ``9200``.
+By default Elasticsearch is deployed on port ``9200``.
 
 .. note::
 
-   OpenSearch stores a lot of logs, so if you are running centralized logging,
-   remember to give ``/var/lib/docker`` adequate space.
+   Elasticsearch stores a lot of logs, so if you are running centralized logging,
+   remember to give ``/var/lib/docker`` an adequate space.
 
    Alternatively it is possible to use a local directory instead of the volume
-   ``opensearch`` to store the data of OpenSearch. The path can be set via
-   the variable ``opensearch_datadir_volume``.
+   ``elasticsearch`` to store the data of Elasticsearch. The path can be set via
+   the variable ``elasticsearch_datadir_volume``.
 
-OpenSearch Dashboards
-~~~~~~~~~~~~~~~~~~~~~
+Kibana
+~~~~~~
 
-Kolla deploys OpenSearch dashboards to allow operators to
+Kolla deploys Kibana as part of the E*K stack in order to allow operators to
 search and visualise logs in a centralised manner.
 
-After a successful deployment, OpenSearch Dashboards can be accessed using a
-browser on ``<kolla_internal_fqdn>:5601`` or
-``<kolla_external_fqdn>:5601``.
+After successful deployment, Kibana can be accessed using a browser on
+``<kolla_external_vip_address>:5601``.
 
-The default username is ``opensearch``, the password can be located under
-``<opensearch_dashboards_password>`` in ``/etc/kolla/passwords.yml``.
-
-If you want to prevent OpenSearch Dashboards being exposed on the external
-VIP, you can set ``enable_opensearch_dashboards_external`` to ``false`` in
-``/etc/kolla/globals.yml``.
+The default username is ``kibana``, the password can be located under
+``<kibana_password>`` in ``/etc/kolla/passwords.yml``.
 
 First Login
 -----------
 
-When OpenSearch Dashboards is opened for the first time, it requires creating
-a default index pattern. To view, analyse and search logs, at least one
-index pattern has to be created. To match indices stored in OpenSearch,
-we suggest using the following configuration:
+When Kibana is opened for the first time, it requires creating a default index
+pattern. To view, analyse and search logs, at least one index pattern has to
+be created. To match indices stored in ElasticSearch, we suggest using the
+following configuration:
 
 #. Index pattern - flog-*
 #. Time Filter field name - @timestamp
@@ -95,12 +91,12 @@ services across the cluster.
 The current search can also be saved by clicking the ``Save Search`` icon
 available from the menu on the right hand side.
 
-Example: using OpenSearch Dashboards to diagnose a common failure
------------------------------------------------------------------
+Example: using Kibana to diagnose a common failure
+--------------------------------------------------
 
-The following example demonstrates how OpenSearch can be used to diagnose a
-common OpenStack problem, where an instance fails to launch with the error
-'No valid host was found'.
+The following example demonstrates how Kibana can be used to diagnose a common
+OpenStack problem, where an instance fails to launch with the error 'No valid
+host was found'.
 
 First, re-run the server creation with ``--debug``:
 
@@ -118,18 +114,17 @@ example ID looks like this:
 
    X-Compute-Request-Id: req-c076b50a-6a22-48bf-8810-b9f41176a6d5
 
-Taking the value of ``X-Compute-Request-Id``, enter the value into the
-OpenSearch Dashboards search bar, minus the leading ``req-``. Assuming some
-basic filters have been added as shown in the previous section, OpenSearch
-Dashboards should now show the path this request made through the
-OpenStack deployment, starting at a ``nova-api`` on a control node,
-through the ``nova-scheduler``, ``nova-conductor``, and finally
+Taking the value of ``X-Compute-Request-Id``, enter the value into the Kibana
+search bar, minus the leading ``req-``. Assuming some basic filters have been
+added as shown in the previous section, Kibana should now show the path this
+request made through the OpenStack deployment, starting at a ``nova-api`` on
+a control node, through the ``nova-scheduler``, ``nova-conductor``, and finally
 ``nova-compute``. Inspecting the ``Payload`` of the entries marked ``ERROR``
 should quickly lead to the source of the problem.
 
 While some knowledge is still required of how Nova works in this instance, it
-can still be seen how OpenSearch Dashboards helps in tracing this data,
-particularly in a large scale deployment scenario.
+can still be seen how Kibana helps in tracing this data, particularly in a
+large scale deployment scenario.
 
 Visualize data - Visualize tab
 ------------------------------
@@ -185,7 +180,7 @@ choosing *import* option.
 Custom log rules
 ~~~~~~~~~~~~~~~~
 
-Kolla Ansible automatically deploys Fluentd for forwarding OpenStack logs
+Kolla-Ansible automatically deploys Fluentd for forwarding OpenStack logs
 from across the control plane to a central logging repository. The Fluentd
 configuration is split into four parts: Input, forwarding, filtering and
 formatting. The following can be customised:

@@ -28,10 +28,6 @@
     - "swift-proxy-server"
     - "swift-rsyncd"
 
-- include_tasks: copy-certs.yml
-  when:
-    - kolla_copy_ca_into_containers | bool
-
 - name: Copying over config.json files for services
   template:
     src: "{{ item }}.json.j2"
@@ -194,12 +190,9 @@
     - "container.ring.gz"
     - "object.builder"
     - "object.ring.gz"
-    - "{{ swift_extra_ring_files }}"
 
 - name: Check if policies shall be overwritten
-  stat:
-    path: "{{ node_custom_config }}/swift/policy.json"
-  delegate_to: localhost
+  local_action: stat path="{{ node_custom_config }}/swift/policy.json"
   run_once: True
   register: swift_policy
 

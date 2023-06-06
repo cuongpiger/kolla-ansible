@@ -18,9 +18,8 @@ Preferred way to run the tests
 
 The preferred way to run the unit tests is using ``tox``. It executes tests in
 isolated environment, by creating separate virtualenv and installing
-dependencies from the ``requirements.txt``, ``test-requirements.txt`` and
-``doc/requirements.txt`` files, so the only package you install is ``tox``
-itself:
+dependencies from the ``requirements.txt`` and ``test-requirements.txt`` files,
+so the only package you install is ``tox`` itself:
 
 .. code-block:: console
 
@@ -29,29 +28,23 @@ itself:
 For more information, see `the unit testing section of the Testing wiki page
 <https://wiki.openstack.org/wiki/Testing#Unit_Tests>`_. For example:
 
-To run the default set of tests:
+To run the Python 2.7 tests:
 
 .. code-block:: console
 
-   tox
-
-To run the Python 3.8 tests:
-
-.. code-block:: console
-
-   tox -e py38
+   tox -e py27
 
 To run the style tests:
 
 .. code-block:: console
 
-   tox -e linters
+   tox -e pep8
 
 To run multiple tests separate items by commas:
 
 .. code-block:: console
 
-   tox -e py38,linters
+   tox -e py27,py37,pep8
 
 Running a subset of tests
 -------------------------
@@ -65,28 +58,28 @@ directory use:
 
 .. code-block:: console
 
-   tox -e py38 kolla-ansible.tests
+   tox -e py27 kolla-ansible.tests
 
 To run the tests of a specific file
 ``kolla-ansible/tests/test_kolla_docker.py``:
 
 .. code-block:: console
 
-   tox -e py38 test_kolla_docker
+   tox -e py27 test_kolla_docker
 
 To run the tests in the ``ModuleArgsTest`` class in
 the ``kolla-ansible/tests/test_kolla_docker.py`` file:
 
 .. code-block:: console
 
-   tox -e py38 test_kolla_docker.ModuleArgsTest
+   tox -e py27 test_kolla_docker.ModuleArgsTest
 
 To run the ``ModuleArgsTest.test_module_args`` test method in
 the ``kolla-ansible/tests/test_kolla_docker.py`` file:
 
 .. code-block:: console
 
-   tox -e py38 test_kolla_docker.ModuleArgsTest.test_module_args
+   tox -e py27 test_kolla_docker.ModuleArgsTest.test_module_args
 
 Debugging unit tests
 --------------------

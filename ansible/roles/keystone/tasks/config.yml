@@ -13,9 +13,7 @@
   with_dict: "{{ keystone_services }}"
 
 - name: Check if policies shall be overwritten
-  stat:
-    path: "{{ item }}"
-  delegate_to: localhost
+  local_action: stat path="{{ item }}"
   run_once: True
   register: keystone_policy
   with_first_found:
@@ -32,28 +30,25 @@
     - keystone_policy.results
 
 - name: Check if Keystone domain-specific config is supplied
-  stat:
-    path: "{{ node_custom_config }}/keystone/domains"
-  delegate_to: localhost
+  local_action: stat path="{{ node_custom_config }}/keystone/domains"
   run_once: True
   register: keystone_domain_directory
-
-- include_tasks: copy-certs.yml
-  when:
-    - kolla_copy_ca_into_containers | bool or keystone_enable_tls_backend | bool
 
 - name: Copying over config.json files for services
   template:
     src: "{{ item.key }}.json.j2"
     dest: "{{ node_config_directory }}/{{ item.key }}/config.json"
     mode: "0660"
+  register: keystone_config_jsons
   become: true
   with_dict: "{{ keystone_services }}"
   when:
     - inventory_hostname in groups[item.value.group]
     - item.value.enabled | bool
   notify:
-    - Restart {{ item.key }} container
+    - Restart keystone container
+    - Restart keystone-ssh container
+    - Restart keystone-fernet container
 
 - name: Copying over keystone.conf
   vars:
@@ -68,27 +63,15 @@
     dest: "{{ node_config_directory }}/{{ item.key }}/keystone.conf"
     mode: "0660"
   become: true
+  register: keystone_confs
   with_dict: "{{ keystone_services }}"
   when:
     - inventory_hostname in groups[item.value.group]
     - item.key in [ "keystone", "keystone-fernet" ]
     - item.value.enabled | bool
   notify:
-    - Restart {{ item.key }} container
-
-- name: Copying keystone-startup script for keystone
-  vars:
-    keystone: "{{ keystone_services['keystone'] }}"
-  template:
-    src: "keystone-startup.sh.j2"
-    dest: "{{ node_config_directory }}/keystone/keystone-startup.sh"
-    mode: "0660"
-  become: true
-  when:
-    - inventory_hostname in groups[keystone.group]
-    - keystone.enabled | bool
-  notify:
     - Restart keystone container
+    - Restart keystone-fernet container
 
 - name: Create Keystone domain-specific config directory
   vars:
@@ -104,11 +87,7 @@
     - keystone_domain_directory.stat.exists
 
 - name: Get file list in custom domains folder
-  find:
-    path: "{{ node_custom_config }}/keystone/domains"
-    recurse: no
-    file_type: file
-  delegate_to: localhost
+  local_action: find path="{{ node_custom_config }}/keystone/domains" recurse=no file_type=file
   register: keystone_domains
   when: keystone_domain_directory.stat.exists
 
@@ -125,7 +104,7 @@
     - inventory_hostname in groups[keystone.group]
     - keystone.enabled | bool
     - keystone_domain_directory.stat.exists
-  with_items: "{{ keystone_domains.files | default([]) }}"
+  with_items: "{{ keystone_domains.files|default([]) }}"
   notify:
     - Restart keystone container
 
@@ -135,6 +114,7 @@
     dest: "{{ node_config_directory }}/{{ item.key }}/{{ keystone_policy_file }}"
     mode: "0660"
   become: true
+  register: keystone_policy_overwriting
   when:
     - inventory_hostname in groups[item.value.group]
     - item.key in [ "keystone", "keystone-fernet" ]
@@ -142,11 +122,8 @@
     - keystone_policy_file is defined
   with_dict: "{{ keystone_services }}"
   notify:
-    - Restart {{ item.key }} container
-
-- include_tasks: config-federation-oidc.yml
-  when:
-    - keystone_enable_federation_openid | bool
+    - Restart keystone container
+    - Restart keystone-fernet container
 
 - name: Copying over wsgi-keystone.conf
   vars:
@@ -156,6 +133,7 @@
     dest: "{{ node_config_directory }}/keystone/wsgi-keystone.conf"
     mode: "0660"
   become: true
+  register: keystone_wsgi
   when:
     - inventory_hostname in groups[keystone.group]
     - keystone.enabled | bool
@@ -169,9 +147,7 @@
 - name: Checking whether keystone-paste.ini file exists
   vars:
     keystone: "{{ keystone_services.keystone }}"
-  stat:
-    path: "{{ node_custom_config }}/keystone/keystone-paste.ini"
-  delegate_to: localhost
+  local_action: stat path="{{ node_custom_config }}/keystone/keystone-paste.ini"
   run_once: True
   register: check_keystone_paste_ini
   when:
@@ -185,6 +161,7 @@
     dest: "{{ node_config_directory }}/keystone/keystone-paste.ini"
     mode: "0660"
   become: true
+  register: keystone_paste_ini
   when:
     - inventory_hostname in groups[keystone.group]
     - keystone.enabled | bool
@@ -194,20 +171,20 @@
 
 - name: Generate the required cron jobs for the node
   command: >
-    {{ ansible_playbook_python }} {{ role_path }}/files/fernet_rotate_cron_generator.py
+    python {{ role_path }}/files/fernet_rotate_cron_generator.py
     -t {{ (fernet_key_rotation_interval | int) // 60 }}
     -i {{ groups['keystone'].index(inventory_hostname) }}
     -n {{ (groups['keystone'] | length) }}
   changed_when: false
-  check_mode: false
   register: cron_jobs_json
-  connection: local
+  when: keystone_token_provider == 'fernet'
   delegate_to: localhost
 
 - name: Set fact with the generated cron jobs for building the crontab later
   set_fact:
     cron_jobs: "{{ (cron_jobs_json.stdout | from_json).cron_jobs }}"
   ignore_errors: "{{ ansible_check_mode }}"
+  when: keystone_token_provider == 'fernet'
 
 - name: Copying files for keystone-fernet
   vars:
@@ -217,13 +194,13 @@
     dest: "{{ node_config_directory }}/keystone-fernet/{{ item.dest }}"
     mode: "0660"
   become: true
+  register: keystone_fernet_confs
   ignore_errors: "{{ ansible_check_mode }}"
   with_items:
     - { src: "crontab.j2", dest: "crontab" }
     - { src: "fernet-rotate.sh.j2", dest: "fernet-rotate.sh" }
     - { src: "fernet-node-sync.sh.j2", dest: "fernet-node-sync.sh" }
     - { src: "fernet-push.sh.j2", dest: "fernet-push.sh" }
-    - { src: "fernet-healthcheck.sh.j2", dest: "fernet-healthcheck.sh" }
     - { src: "id_rsa", dest: "id_rsa" }
     - { src: "ssh_config.j2", dest: "ssh_config" }
   when:
@@ -240,6 +217,7 @@
     dest: "{{ node_config_directory }}/keystone-ssh/{{ item.dest }}"
     mode: "0660"
   become: true
+  register: keystone_ssh_confs
   with_items:
     - { src: "sshd_config.j2", dest: "sshd_config" }
     - { src: "id_rsa.pub", dest: "id_rsa.pub" }
@@ -248,3 +226,23 @@
     - keystone_ssh.enabled | bool
   notify:
     - Restart keystone-ssh container
+
+- name: Check keystone containers
+  become: true
+  kolla_docker:
+    action: "compare_container"
+    common_options: "{{ docker_common_options }}"
+    name: "{{ item.value.container_name }}"
+    image: "{{ item.value.image }}"
+    volumes: "{{ item.value.volumes|reject('equalto', '')|list }}"
+    dimensions: "{{ item.value.dimensions }}"
+  when:
+    - kolla_action != "config"
+    - inventory_hostname in groups[item.value.group]
+    - item.value.enabled | bool
+  register: check_keystone_containers
+  with_dict: "{{ keystone_services }}"
+  notify:
+    - Restart keystone container
+    - Restart keystone-ssh container
+    - Restart keystone-fernet container

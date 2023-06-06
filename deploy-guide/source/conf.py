@@ -54,9 +54,9 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'Kolla Ansible'
-bug_tag = 'deploy-guide'
-copyright = '2016, OpenStack contributors'
+project = u'Kolla-Ansible'
+bug_tag = u'deploy-guide'
+copyright = u'2016, OpenStack contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -107,7 +107,7 @@ exclude_patterns = ["common_prerequisites.rst", "common_configure.rst"]
 # show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'native'
+pygments_style = 'sphinx'
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []
@@ -224,8 +224,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    ('index', 'DeployGuide.tex', 'Deploy Guide',
-     'OpenStack contributors', 'manual'),
+    ('index', 'DeployGuide.tex', u'Deploy Guide',
+     u'OpenStack contributors', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -254,8 +254,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'deployguide', 'Deploy Guide',
-     ['OpenStack contributors'], 1)
+    ('index', 'deployguide', u'Deploy Guide',
+     [u'OpenStack contributors'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -268,8 +268,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    ('index', 'DeployGuide', 'Deploy Guide',
-     'OpenStack contributors', 'DeployGuide',
+    ('index', 'DeployGuide', u'Deploy Guide',
+     u'OpenStack contributors', 'DeployGuide',
      'This guide shows OpenStack end users how to deploy '
      'an OpenStack cloud.', 'Miscellaneous'),
 ]
@@ -292,8 +292,8 @@ locale_dirs = ['locale/']
 # -- Options for PDF output --------------------------------------------------
 
 pdf_documents = [
-    ('index', 'DeployGuide', 'Deploy Guide',
-     'OpenStack contributors')
+    ('index', u'DeployGuide', u'Deploy Guide',
+     u'OpenStack contributors')
 ]
 
 # -- Options for openstackdocstheme -------------------------------------------

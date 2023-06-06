@@ -4,9 +4,16 @@
 - include_tasks: clone.yml
   when: placement_dev_mode | bool
 
-- import_tasks: config.yml
+# TODO(mgoddard): Remove this in Train once all old containers have been
+# stopped.
+- name: "Stopping old placement-api containers"
+  become: true
+  kolla_docker:
+    action: "stop_container"
+    common_options: "{{ docker_common_options }}"
+    name: "placement_api"
 
-- import_tasks: check-containers.yml
+- import_tasks: config.yml
 
 - import_tasks: bootstrap.yml
 
@@ -28,7 +35,7 @@
     labels:
       BOOTSTRAP:
     name: "bootstrap_placement"
-    restart_policy: no
+    restart_policy: "never"
     volumes: "{{ placement_api.volumes }}"
   run_once: True
   delegate_to: "{{ groups[placement_api.group][0] }}"

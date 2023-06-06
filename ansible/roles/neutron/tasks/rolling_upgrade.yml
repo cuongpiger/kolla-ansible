@@ -3,8 +3,6 @@
 
 - import_tasks: config.yml
 
-- import_tasks: check-containers.yml
-
 - include_tasks: config-neutron-fake.yml
   when:
     - inventory_hostname in groups['compute']
@@ -27,17 +25,24 @@
     labels:
       UPGRADE:
     name: "bootstrap_neutron"
-    restart_policy: no
+    restart_policy: "never"
     volumes: "{{ neutron_server.volumes }}"
   run_once: True
   delegate_to: "{{ groups['neutron-server'][0] }}"
+
+- include_tasks: bootstrap_service.yml
+  vars:
+    neutron_lbaas_agent: "{{ neutron_services['neutron-lbaas-agent'] }}"
+    neutron_server: "{{ neutron_services['neutron-server'] }}"
+  when: (neutron_lbaas_agent.enabled | bool)
+        or (enable_neutron_sfc | bool and neutron_server.enabled | bool)
 
 - name: Flush Handlers
   meta: flush_handlers
 
 - name: Checking neutron pending contract scripts
   become: true
-  command: "{{ kolla_container_engine }} exec -t neutron_server neutron-db-manage --subproject {{ item }} has_offline_migrations"
+  command: "docker exec -t neutron_server neutron-db-manage --subproject {{ item }} has_offline_migrations"
   register: neutron_check_contract_db_stdout
   ignore_errors: yes
   with_items: "{{ neutron_rolling_upgrade_services }}"
@@ -48,7 +53,6 @@
     neutron_server: "{{ neutron_services['neutron-server'] }}"
     first_neutron_server_host: "{{ groups[neutron_server.group][0] }}"
     results_of_check_pending_contract_scripts: "{{ hostvars[first_neutron_server_host]['neutron_check_contract_db_stdout'] }}"
-    # NOTE(hrw): no idea
     filter_rc: "results[?rc!=`0`]"
     is_stop_neutron_server: "{{ results_of_check_pending_contract_scripts | json_query(filter_rc) }}"
   become: true
@@ -57,8 +61,8 @@
     common_options: "{{ docker_common_options }}"
     name: "{{ neutron_server.container_name }}"
   when:
+    - is_stop_neutron_server|length > 0
     - neutron_server.host_in_groups | bool
-    - is_stop_neutron_server | length > 0
   notify:
     - "Restart neutron-server container"
 
@@ -79,7 +83,7 @@
     labels:
       UPGRADE:
     name: "bootstrap_neutron"
-    restart_policy: no
+    restart_policy: "never"
     volumes: "{{ neutron_server.volumes }}"
   run_once: True
   delegate_to: "{{ groups['neutron-server'][0] }}"

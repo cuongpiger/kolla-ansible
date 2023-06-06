@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # Move to top level directory
 REAL_PATH=$(python -c "import os;print os.path.realpath('$0')")

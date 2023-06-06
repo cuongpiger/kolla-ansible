@@ -23,7 +23,8 @@
     - item.value.enabled | bool
   with_dict: "{{ rabbitmq_services }}"
   notify:
-    - Restart rabbitmq container
+    - Restart rabbitmq container (first node)
+    - Restart rabbitmq container (rest of nodes)
 
 - name: Copying over rabbitmq-env.conf
   become: true
@@ -41,7 +42,9 @@
     - inventory_hostname in groups[service.group]
     - service.enabled | bool
   notify:
-    - Restart rabbitmq container
+    - Restart rabbitmq container (first node)
+    - Restart rabbitmq container (rest of nodes)
+
 
 - name: Copying over rabbitmq.conf
   become: true
@@ -59,43 +62,8 @@
     - inventory_hostname in groups[service.group]
     - service.enabled | bool
   notify:
-    - Restart rabbitmq container
-
-- name: Copying over erl_inetrc
-  become: true
-  vars:
-    service: "{{ rabbitmq_services['rabbitmq'] }}"
-  template:
-    src: "{{ item }}"
-    dest: "{{ node_config_directory }}/{{ project_name }}/erl_inetrc"
-    mode: "0660"
-  with_first_found:
-    - "{{ node_custom_config }}/rabbitmq/{{ inventory_hostname }}/erl_inetrc"
-    - "{{ node_custom_config }}/rabbitmq/erl_inetrc"
-    - "erl_inetrc.j2"
-  when:
-    - inventory_hostname in groups[service.group]
-    - service.enabled | bool
-  notify:
-    - Restart rabbitmq container
-
-- name: Copying over advanced.config
-  become: true
-  vars:
-    service: "{{ rabbitmq_services['rabbitmq'] }}"
-  template:
-    src: "{{ item }}"
-    dest: "{{ node_config_directory }}/{{ project_name }}/advanced.config"
-    mode: "0660"
-  with_first_found:
-    - "{{ node_custom_config }}/rabbitmq/{{ inventory_hostname }}/advanced.config"
-    - "{{ node_custom_config }}/rabbitmq/advanced.config"
-    - "advanced.config.j2"
-  when:
-    - inventory_hostname in groups[service.group]
-    - service.enabled | bool
-  notify:
-    - Restart rabbitmq container
+    - Restart rabbitmq container (first node)
+    - Restart rabbitmq container (rest of nodes)
 
 - name: Copying over definitions.json
   become: true
@@ -113,25 +81,24 @@
     - inventory_hostname in groups[service.group]
     - service.enabled | bool
   notify:
-    - Restart rabbitmq container
+    - Restart rabbitmq container (first node)
+    - Restart rabbitmq container (rest of nodes)
 
-- name: Copying over enabled_plugins
+- name: Check rabbitmq containers
   become: true
-  vars:
-    service: "{{ rabbitmq_services['rabbitmq'] }}"
-  template:
-    src: "{{ item }}"
-    dest: "{{ node_config_directory }}/{{ project_name }}/enabled_plugins"
-    mode: "0660"
-  with_first_found:
-    - "{{ node_custom_config }}/rabbitmq/{{ inventory_hostname }}/enabled_plugins"
-    - "{{ node_custom_config }}/rabbitmq/enabled_plugins"
-    - "enabled_plugins.j2"
+  kolla_docker:
+    action: "compare_container"
+    common_options: "{{ docker_common_options }}"
+    name: "{{ item.value.container_name }}"
+    image: "{{ item.value.image }}"
+    volumes: "{{ item.value.volumes }}"
+    environment: "{{ item.value.environment }}"
+    dimensions: "{{ item.value.dimensions }}"
   when:
-    - inventory_hostname in groups[service.group]
-    - service.enabled | bool
+    - kolla_action != "config"
+    - inventory_hostname in groups[item.value.group]
+    - item.value.enabled | bool
+  with_dict: "{{ rabbitmq_services }}"
   notify:
-    - Restart rabbitmq container
-
-- include_tasks: copy-certs.yml
-  when: rabbitmq_enable_tls | bool
+    - Restart rabbitmq container (first node)
+    - Restart rabbitmq container (rest of nodes)

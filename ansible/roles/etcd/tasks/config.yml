@@ -18,13 +18,29 @@
     dest: "{{ node_config_directory }}/{{ item.key }}/config.json"
     mode: "0660"
   become: true
+  register: etcd_config_jsons
   when:
     - item.value.enabled | bool
     - inventory_hostname in groups[item.value.group]
   with_dict: "{{ etcd_services }}"
   notify:
-    - Restart {{ item.key }} container
+    - Restart etcd container
 
-- include_tasks: copy-certs.yml
+- name: Check etcd containers
+  become: true
+  kolla_docker:
+    action: "compare_container"
+    common_options: "{{ docker_common_options }}"
+    name: "{{ item.value.container_name }}"
+    image: "{{ item.value.image }}"
+    volumes: "{{ item.value.volumes }}"
+    dimensions: "{{ item.value.dimensions }}"
+    environment: "{{ item.value.environment }}"
+  register: check_etcd_containers
   when:
-    - etcd_enable_tls | bool
+    - kolla_action != "config"
+    - item.value.enabled | bool
+    - inventory_hostname in groups[item.value.group]
+  with_dict: "{{ etcd_services }}"
+  notify:
+    - Restart etcd container

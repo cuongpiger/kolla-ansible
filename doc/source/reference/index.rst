@@ -14,8 +14,5 @@ Projects Deployment Configuration Reference
    logging-and-monitoring/index
    containers/index
    databases/index
-   message-queues/index
    deployment-config/index
    deployment-and-bootstrapping/index
-   high-availability/index
-   rating/index

@@ -10,14 +10,12 @@ export PYTHONUNBUFFERED=1
 function upgrade_bifrost {
     RAW_INVENTORY=/etc/kolla/inventory
 
-    source $KOLLA_ANSIBLE_VENV_PATH/bin/activate
-
     # TODO(mgoddard): run prechecks.
     # TODO(mgoddard): add pull action when we have a local registry service in
     # CI.
     # TODO(mgoddard): make some configuration file changes and trigger a real
     # upgrade.
-    kolla-ansible -i ${RAW_INVENTORY} -vvv deploy-bifrost &> /tmp/logs/ansible/upgrade-bifrost
+    tools/kolla-ansible -i ${RAW_INVENTORY} -vvv deploy-bifrost &> /tmp/logs/ansible/upgrade-bifrost
 }
 
 

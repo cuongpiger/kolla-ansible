@@ -1,14 +1,21 @@
 ---
-- import_role:
-    name: service-ks-register
-  vars:
-    service_ks_register_auth: "{{ openstack_ceilometer_auth }}"
-    service_ks_register_users: "{{ ceilometer_ks_users }}"
+- name: Creating the Ceilometer project, user, and role
+  become: true
+  kolla_toolbox:
+    module_name: "kolla_keystone_user"
+    module_args:
+      project: "service"
+      user: "{{ ceilometer_keystone_user }}"
+      password: "{{ ceilometer_keystone_password }}"
+      role: "admin"
+      region_name: "{{ openstack_region_name }}"
+      auth: "{{ openstack_ceilometer_auth }}"
+      endpoint_type: "{{ openstack_interface }}"
+  run_once: True
 
 - name: Associate the ResellerAdmin role and ceilometer user
   become: true
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: "os_user_role"
     module_args:
       project: "service"
@@ -17,6 +24,5 @@
       region_name: "{{ openstack_region_name }}"
       auth: "{{ openstack_ceilometer_auth }}"
       endpoint_type: "{{ openstack_interface }}"
-      cacert: "{{ openstack_cacert }}"
   when: enable_swift | bool
   run_once: True

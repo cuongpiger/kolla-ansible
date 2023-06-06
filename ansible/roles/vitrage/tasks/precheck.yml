@@ -1,22 +1,14 @@
 ---
-- import_role:
-    name: service-precheck
-  vars:
-    service_precheck_services: "{{ vitrage_services }}"
-    service_name: "{{ project_name }}"
-
 - name: Get container facts
   become: true
   kolla_container_facts:
-    container_engine: "{{ kolla_container_engine }}"
     name:
       - vitrage_api
-  check_mode: false
   register: container_facts
 
 - name: Checking free port for vitrage API
   wait_for:
-    host: "{{ 'api' | kolla_address }}"
+    host: "{{ hostvars[inventory_hostname]['ansible_' + api_interface]['ipv4']['address'] }}"
     port: "{{ vitrage_api_port }}"
     connect_timeout: 1
     state: stopped
@@ -25,9 +17,7 @@
     - inventory_hostname in groups['vitrage-api']
 
 - name: Checking custom prometheus_conf.yaml exists
-  stat:
-    path: "{{ node_custom_config }}/vitrage/prometheus_conf.yaml"
-  delegate_to: localhost
+  local_action: stat path="{{ node_custom_config }}/vitrage/prometheus_conf.yaml"
   register: result
   run_once: true
   failed_when: not result.stat.exists

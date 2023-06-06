@@ -12,15 +12,10 @@ We welcome everyone to join our project!
 .. toctree::
    :maxdepth: 1
 
-   contributing
-   adding-a-new-service
-   release-notes
+   CONTRIBUTING
    vagrant-dev-env
    running-tests
-   code-review
    kolla-for-openstack-development
    bug-triage
    ptl-guide
    release-management
-   ci
-   setup-identity-provider

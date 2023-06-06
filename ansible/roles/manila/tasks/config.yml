@@ -12,15 +12,22 @@
     - item.value.enabled | bool
   with_dict: "{{ manila_services }}"
 
+- include_tasks: ceph.yml
+  when:
+    - enable_ceph | bool
+    - enable_ceph_mds | bool
+    - (enable_manila_backend_cephfs_native | bool) or (enable_manila_backend_cephfs_nfs | bool)
+    - inventory_hostname in groups['manila-share']
+
 - include_tasks: external_ceph.yml
   when:
+    - enable_ceph| bool == False
+    - enable_ceph_mds| bool == False
     - (enable_manila_backend_cephfs_native | bool) or (enable_manila_backend_cephfs_nfs | bool)
     - inventory_hostname in groups['manila-share']
 
 - name: Check if policies shall be overwritten
-  stat:
-    path: "{{ item }}"
-  delegate_to: localhost
+  local_action: stat path="{{ item }}"
   run_once: True
   register: manila_policy
   with_first_found:
@@ -36,16 +43,13 @@
   when:
     - manila_policy.results
 
-- include_tasks: copy-certs.yml
-  when:
-    - kolla_copy_ca_into_containers | bool
-
 - name: Copying over config.json files for services
   template:
     src: "{{ item.key }}.json.j2"
     dest: "{{ node_config_directory }}/{{ item.key }}/config.json"
     mode: "0660"
   become: true
+  register: manila_config_jsons
   when:
     - inventory_hostname in groups[item.value.group]
     - item.value.enabled | bool
@@ -66,13 +70,16 @@
     dest: "{{ node_config_directory }}/{{ item.key }}/manila.conf"
     mode: "0660"
   become: true
+  register: manila_confs
   when:
     - item.key in [ "manila-api", "manila-data", "manila-scheduler" ]
     - inventory_hostname in groups[item.value.group]
     - item.value.enabled | bool
   with_dict: "{{ manila_services }}"
   notify:
-    - Restart {{ item.key }} container
+    - Restart manila-api container
+    - Restart manila-data container
+    - Restart manila-scheduler container
 
 - name: Copying over manila-share.conf
   vars:
@@ -90,6 +97,7 @@
     dest: "{{ node_config_directory }}/{{ item }}/manila.conf"
     mode: "0660"
   become: true
+  register: manila_conf_share
   when:
     - inventory_hostname in groups[service.group]
     - service.enabled | bool
@@ -103,8 +111,28 @@
     src: "{{ manila_policy_file_path }}"
     dest: "{{ node_config_directory }}/{{ item.key }}/{{ manila_policy_file }}"
     mode: "0660"
+  register: manila_policy_overwriting
   when:
     - manila_policy_file is defined
+    - inventory_hostname in groups[item.value.group]
+    - item.value.enabled | bool
+  with_dict: "{{ manila_services }}"
+  notify:
+    - "Restart {{ item.key }} container"
+
+- name: Check manila containers
+  become: true
+  kolla_docker:
+    action: "compare_container"
+    common_options: "{{ docker_common_options }}"
+    name: "{{ item.value.container_name }}"
+    image: "{{ item.value.image }}"
+    privileged: "{{ item.value.privileged|default(False) }}"
+    volumes: "{{ item.value.volumes|reject('equalto', '')|list }}"
+    dimensions: "{{ item.value.dimensions }}"
+  register: check_manila_containers
+  when:
+    - kolla_action != "config"
     - inventory_hostname in groups[item.value.group]
     - item.value.enabled | bool
   with_dict: "{{ manila_services }}"

@@ -1,18 +1,10 @@
 ---
-- import_role:
-    name: service-precheck
-  vars:
-    service_precheck_services: "{{ rabbitmq_services }}"
-    service_name: "{{ project_name }}"
-
 - name: Get container facts
   become: true
   kolla_container_facts:
-    container_engine: "{{ kolla_container_engine }}"
     name:
       - rabbitmq
       - outward_rabbitmq
-  check_mode: false
   register: container_facts
 
 - name: Checking free port for RabbitMQ
@@ -60,11 +52,8 @@
     - inventory_hostname in groups['rabbitmq']
 
 - name: Check if all rabbit hostnames are resolvable
-  vars:
-    nss_database: "{{ 'ahostsv4' if api_address_family == 'ipv4' else 'ahostsv6' }}"
-  command: "getent {{ nss_database }} {{ hostvars[item].ansible_facts.hostname }}"
+  command: "getent ahostsv4 {{ hostvars[item]['ansible_hostname'] }}"
   changed_when: false
-  check_mode: false
   register: rabbitmq_hostnames
   with_items: "{{ groups['rabbitmq'] }}"
 
@@ -75,33 +64,7 @@
     - "{{ rabbitmq_hostnames.results }}"
     - stdout_lines
   when:
-    - not item.1 is match('^'+('api' | kolla_address(item.0.item))+'\\b')
-
-- name: Check if TLS certificate exists for RabbitMQ
-  assert:
-    that: cert | length > 0
-    fail_msg: No TLS certificate provided for RabbitMQ.
-  vars:
-    cert: "{{ query('first_found', paths, errors='ignore') }}"
-    paths:
-      - "{{ kolla_certificates_dir }}/{{ inventory_hostname }}/rabbitmq-cert.pem"
-      - "{{ kolla_certificates_dir }}/{{ inventory_hostname }}-cert.pem"
-      - "{{ kolla_certificates_dir }}/rabbitmq-cert.pem"
-  when:
-    - rabbitmq_enable_tls | bool
-
-- name: Check if TLS key exists for RabbitMQ
-  assert:
-    that: key | length > 0
-    fail_msg: No TLS key provided for RabbitMQ.
-  vars:
-    key: "{{ query('first_found', paths, errors='ignore') }}"
-    paths:
-      - "{{ kolla_certificates_dir }}/{{ inventory_hostname }}/rabbitmq-key.pem"
-      - "{{ kolla_certificates_dir }}/{{ inventory_hostname }}-key.pem"
-      - "{{ kolla_certificates_dir }}/rabbitmq-key.pem"
-  when:
-    - rabbitmq_enable_tls | bool
+    - not item.1 is match('^'+hostvars[item.0.item]['ansible_' ~ hostvars[item.0.item]['api_interface']]['ipv4']['address']+'\\b')
 
 - name: Checking free port for outward RabbitMQ
   wait_for:
@@ -148,11 +111,8 @@
     - container_facts['outward_rabbitmq'] is not defined
 
 - name: Check if all outward rabbit hostnames are resolvable
-  vars:
-    nss_database: "{{ 'ahostsv4' if api_address_family == 'ipv4' else 'ahostsv6' }}"
-  command: "getent {{ nss_database }} {{ hostvars[item].ansible_facts.hostname }}"
+  command: "getent ahostsv4 {{ hostvars[item]['ansible_hostname'] }}"
   changed_when: false
-  check_mode: false
   register: outward_rabbitmq_hostnames
   with_items: "{{ groups['outward-rabbitmq'] }}"
   when:
@@ -166,32 +126,4 @@
     - stdout_lines
   when:
     - enable_outward_rabbitmq | bool
-    - not item.1 is match('^'+('api' | kolla_address(item.0.item))+'\\b')
-
-- name: Check if TLS certificate exists for outward RabbitMQ
-  assert:
-    that: cert | length > 0
-    fail_msg: No TLS certificate provided for outward RabbitMQ.
-  vars:
-    cert: "{{ query('first_found', paths, errors='ignore') }}"
-    paths:
-      - "{{ kolla_certificates_dir }}/{{ inventory_hostname }}/outward_rabbitmq-cert.pem"
-      - "{{ kolla_certificates_dir }}/{{ inventory_hostname }}-cert.pem"
-      - "{{ kolla_certificates_dir }}/outward_rabbitmq-cert.pem"
-  when:
-    - enable_outward_rabbitmq | bool
-    - rabbitmq_enable_tls | bool
-
-- name: Check if TLS key exists for outward RabbitMQ
-  assert:
-    that: key | length > 0
-    msg: No TLS key provided for outward RabbitMQ.
-  vars:
-    key: "{{ query('first_found', paths, errors='ignore') }}"
-    paths:
-      - "{{ kolla_certificates_dir }}/{{ inventory_hostname }}/outward_rabbitmq-key.pem"
-      - "{{ kolla_certificates_dir }}/{{ inventory_hostname }}-key.pem"
-      - "{{ kolla_certificates_dir }}/outward_rabbitmq-key.pem"
-  when:
-    - enable_outward_rabbitmq | bool
-    - rabbitmq_enable_tls | bool
+    - not item.1 is match('^'+hostvars[item.0.item]['ansible_' ~ hostvars[item.0.item]['api_interface']]['ipv4']['address']+'\\b')

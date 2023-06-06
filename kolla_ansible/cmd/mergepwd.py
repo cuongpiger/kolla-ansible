@@ -17,7 +17,7 @@ import sys
 import yaml
 
 
-def mergepwd(old, new, final, clean=False):
+def mergepwd(old, new, final):
     with open(old, "r") as old_file:
         old_passwords = yaml.safe_load(old_file)
 
@@ -32,14 +32,7 @@ def mergepwd(old, new, final, clean=False):
         print("ERROR: New passwords file not in expected key/value format")
         sys.exit(1)
 
-    if clean:
-        # keep only new keys
-        for key in new_passwords:
-            if key in old_passwords:
-                new_passwords[key] = old_passwords[key]
-    else:
-        # old behavior
-        new_passwords.update(old_passwords)
+    new_passwords.update(old_passwords)
 
     with open(final, "w") as destination:
         yaml.safe_dump(new_passwords, destination, default_flow_style=False)
@@ -50,11 +43,8 @@ def main():
     parser.add_argument("--old", help="old password file", required=True)
     parser.add_argument("--new", help="new password file", required=True)
     parser.add_argument("--final", help="merged password file", required=True)
-    parser.add_argument("--clean",
-                        help="clean (keep only new keys)",
-                        action='store_true')
     args = parser.parse_args()
-    mergepwd(args.old, args.new, args.final, args.clean)
+    mergepwd(args.old, args.new, args.final)
 
 
 if __name__ == '__main__':

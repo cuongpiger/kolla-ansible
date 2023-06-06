@@ -1,10 +1,10 @@
-{% set fluentd_user = 'td-agent' %}
-{% set fluentd_dir = '/etc/td-agent' %}
-{% set fluentd_conf = 'td-agent.conf' %}
-{% set fluentd_cmd = '/usr/sbin/td-agent' %}
+{% set fluentd_cmd = '/usr/sbin/td-agent' if kolla_base_distro in ['ubuntu', 'debian'] else '/usr/bin/fluentd -c /etc/fluentd/fluent.conf' %}
+{% set fluentd_dir = '/etc/td-agent' if kolla_base_distro in ['ubuntu', 'debian'] else '/etc/fluentd' %}
+{% set fluentd_conf = 'td-agent.conf' if kolla_base_distro in ['ubuntu', 'debian'] else 'fluent.conf' %}
+{% set fluentd_user = 'td-agent' if kolla_base_distro in ['ubuntu', 'debian'] else 'fluentd' %}
 
 {
-    "command": "{{ fluentd_cmd }} -o /var/log/kolla/fluentd/fluentd.log",
+    "command": "{{ fluentd_cmd }}",
     "config_files": [
         {
             "source": "{{ container_config_directory }}/td-agent.conf",
@@ -15,17 +15,15 @@
     ],
     "permissions": [
         {
-            "path": "/var/log/kolla/fluentd",
+            "path": "/var/log/kolla/haproxy",
             "owner": "{{ fluentd_user }}:{{ fluentd_user }}",
             "recurse": true
         },
-{% for facility in syslog_facilities | selectattr('enabled') %}
         {
-            "path": "/var/log/kolla/{{ facility.logdir }}",
+            "path": "/var/log/kolla/swift",
             "owner": "{{ fluentd_user }}:{{ fluentd_user }}",
             "recurse": true
         },
-{% endfor %}
         {
             "path": "/var/lib/fluentd/data",
             "owner": "{{ fluentd_user }}:{{ fluentd_user }}",

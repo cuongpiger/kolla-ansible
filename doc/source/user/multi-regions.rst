@@ -9,7 +9,7 @@ with Kolla. A basic multiple region deployment consists of separate
 OpenStack installations in two or more regions (RegionOne, RegionTwo, ...)
 with a shared Keystone and Horizon. The rest of this documentation assumes
 Keystone and Horizon are deployed in RegionOne, and other regions have
-access to the internal endpoint (for example, ``kolla_internal_fqdn``) of
+access to the admin endpoint (for example, ``kolla_internal_fqdn``) of
 RegionOne.
 It also assumes that the operator knows the name of all OpenStack regions
 in advance, and considers as many Kolla deployments as there are regions.
@@ -69,23 +69,15 @@ the value of ``kolla_internal_fqdn`` in RegionOne:
 
    kolla_internal_fqdn_r1: 10.10.10.254
 
+   keystone_admin_url: "{{ admin_protocol }}://{{ kolla_internal_fqdn_r1 }}:{{ keystone_admin_port }}"
    keystone_internal_url: "{{ internal_protocol }}://{{ kolla_internal_fqdn_r1 }}:{{ keystone_public_port }}"
 
    openstack_auth:
-       auth_url: "{{ keystone_internal_url }}"
-       username: "{{ keystone_admin_user }}"
+       auth_url: "{{ admin_protocol }}://{{ kolla_internal_fqdn_r1 }}:{{ keystone_admin_port }}"
+       username: "admin"
        password: "{{ keystone_admin_password }}"
-       user_domain_name: "{{ default_user_domain_name }}"
-       project_name: "{{ keystone_admin_project }}"
+       project_name: "admin"
        domain_name: "default"
-
-.. note::
-
-   If the ``kolla_internal_vip_address`` and/or the
-   ``kolla_external_vip_address`` reside on the same subnet as
-   ``kolla_internal_fqdn_r1``, you should set the
-   ``keepalived_virtual_router_id`` value in the ``/etc/kolla/globals.yml``
-   to a unique number.
 
 Configuration files of cinder,nova,neutron,glance... have to be updated to
 contact RegionOne's Keystone. Fortunately, Kolla allows you to override all
@@ -97,7 +89,7 @@ create a ``global.conf`` file with the following content:
 
    [keystone_authtoken]
    www_authenticate_uri = {{ keystone_internal_url }}
-   auth_url = {{ keystone_internal_url }}
+   auth_url = {{ keystone_admin_url }}
 
 The Placement API section inside the nova configuration file also has
 to be updated to contact RegionOne's Keystone. So create, in the same
@@ -106,7 +98,7 @@ directory, a ``nova.conf`` file with below content:
 .. code-block:: ini
 
    [placement]
-   auth_url = {{ keystone_internal_url }}
+   auth_url = {{ keystone_admin_url }}
 
 The Heat section inside the configuration file also
 has to be updated to contact RegionOne's Keystone. So create, in the same

@@ -13,9 +13,7 @@
   with_dict: "{{ placement_services }}"
 
 - name: Check if policies shall be overwritten
-  stat:
-    path: "{{ item }}"
-  delegate_to: localhost
+  local_action: stat path="{{ item }}"
   run_once: True
   register: placement_policy
   with_first_found:
@@ -30,10 +28,6 @@
     placement_policy_file_path: "{{ placement_policy.results.0.stat.path }}"
   when:
     - placement_policy.results
-
-- include_tasks: copy-certs.yml
-  when:
-    - kolla_copy_ca_into_containers | bool or placement_enable_tls_backend | bool
 
 - name: Copying over config.json files for services
   become: true
@@ -104,12 +98,34 @@
   become: true
   template:
     src: "{{ placement_policy_file_path }}"
-    dest: "{{ node_config_directory }}/{{ item.key }}/{{ placement_policy_file }}"
+    dest: "{{ placement_config_directory }}/{{ item.key }}/{{ placement_policy_file }}"
     mode: "0660"
   when:
     - inventory_hostname in groups[item.value.group]
     - item.value.enabled | bool
     - placement_policy_file is defined
+  with_dict: "{{ placement_services }}"
+  notify:
+    - "Restart {{ item.key }} container"
+
+# check whether the containers parameter is changed. If yes, trigger the handler
+- name: Check placement containers
+  become: true
+  kolla_docker:
+    action: "compare_container"
+    common_options: "{{ docker_common_options }}"
+    name: "{{ item.value.container_name }}"
+    image: "{{ item.value.image }}"
+    environment: "{{ item.value.environment|default(omit) }}"
+    pid_mode: "{{ item.value.pid_mode|default('') }}"
+    ipc_mode: "{{ item.value.ipc_mode|default(omit) }}"
+    privileged: "{{ item.value.privileged|default(False) }}"
+    volumes: "{{ item.value.volumes|reject('equalto', '')|list }}"
+    dimensions: "{{ item.value.dimensions }}"
+  when:
+    - kolla_action != "config"
+    - inventory_hostname in groups[item.value.group]
+    - item.value.enabled | bool
   with_dict: "{{ placement_services }}"
   notify:
     - "Restart {{ item.key }} container"

@@ -4,15 +4,9 @@
 External Ceph
 =============
 
-Kolla Ansible does not provide support for provisioning and configuring a
-Ceph cluster directly. Instead, administrators should use a tool dedicated
-to this purpose, such as:
-
-* `ceph-ansible <https://docs.ceph.com/projects/ceph-ansible/en/latest/>`_
-* `cephadm <https://docs.ceph.com/en/latest/cephadm/install/>`_
-
-The desired pool(s) and keyrings should then be created via the Ceph CLI
-or similar.
+Sometimes it is necessary to connect OpenStack services to an existing Ceph
+cluster instead of deploying it with Kolla. This can be achieved with only a
+few configuration steps in Kolla.
 
 Requirements
 ~~~~~~~~~~~~
@@ -22,319 +16,274 @@ Requirements
 * Existing credentials in Ceph for OpenStack services to connect to Ceph
   (Glance, Cinder, Nova, Gnocchi, Manila)
 
-Refer to https://docs.ceph.com/en/latest/rbd/rbd-openstack/ for details on
+Refer to http://docs.ceph.com/docs/master/rbd/rbd-openstack/ for details on
 creating the pool and keyrings with appropriate permissions for each service.
+
+Enabling External Ceph
+~~~~~~~~~~~~~~~~~~~~~~
+
+Using external Ceph with Kolla means not to deploy Ceph via Kolla. Therefore,
+disable Ceph deployment in ``/etc/kolla/globals.yml``
+
+.. code-block:: yaml
+
+   enable_ceph: "no"
+
+There are flags indicating individual services to use ceph or not which default
+to the value of ``enable_ceph``. Those flags now need to be activated in order
+to activate external Ceph integration. This can be done individually per
+service in ``/etc/kolla/globals.yml``:
+
+.. code-block:: yaml
+
+   glance_backend_ceph: "yes"
+   cinder_backend_ceph: "yes"
+   nova_backend_ceph: "yes"
+   gnocchi_backend_storage: "ceph"
+   enable_manila_backend_cephfs_native: "yes"
+
+The combination of ``enable_ceph: "no"`` and ``<service>_backend_ceph: "yes"``
+triggers the activation of external ceph mechanism in Kolla.
+
+Edit the Inventory File
+~~~~~~~~~~~~~~~~~~~~~~~
+
+When using external Ceph, there may be no nodes defined in the storage group.
+This will cause Cinder and related services relying on this group to fail.
+In this case, operator should add some nodes to the storage group, all the
+nodes where ``cinder-volume`` and ``cinder-backup`` will run:
+
+.. code-block:: ini
+
+   [storage]
+   compute01
 
 Configuring External Ceph
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Ceph integration is configured for different OpenStack services independently.
-
-.. note::
-
-    Commands like ``ceph config generate-minimal-conf`` generate configuration
-    files that have leading tabs. These tabs break Kolla Ansible's ini parser.
-    Be sure to remove the leading tabs from your ``ceph.conf`` files when
-    copying them in the following sections.
-
-
 Glance
 ------
 
-Ceph RBD can be used as a storage backend for Glance images. Configuring Glance
-for Ceph includes the following steps:
+Configuring Glance for Ceph includes three steps:
 
-#. Enable Glance Ceph backend in ``globals.yml``:
+#. Configure RBD back end in ``glance-api.conf``
+#. Create Ceph configuration file in ``/etc/ceph/ceph.conf``
+#. Create Ceph keyring file in ``/etc/ceph/ceph.client.<username>.keyring``
 
-   .. code-block:: yaml
+Step 1 is done by using Kolla's INI merge mechanism: Create a file in
+``/etc/kolla/config/glance/glance-api.conf`` with the following contents:
 
-      glance_backend_ceph: "yes"
+.. code-block:: ini
 
-#. Configure Ceph authentication details in ``/etc/kolla/globals.yml``:
+   [glance_store]
+   stores = rbd
+   default_store = rbd
+   rbd_store_pool = images
+   rbd_store_user = glance
+   rbd_store_ceph_conf = /etc/ceph/ceph.conf
 
-   * ``ceph_glance_keyring`` (default: ``ceph.client.glance.keyring``)
-   * ``ceph_glance_user`` (default: ``glance``)
-   * ``ceph_glance_pool_name`` (default: ``images``)
+Now put ceph.conf and the keyring file (name depends on the username created in
+Ceph) into the same directory, for example:
 
-#. Copy Ceph configuration file to ``/etc/kolla/config/glance/ceph.conf``
+.. path /etc/kolla/config/glance/ceph.conf
+.. code-block:: ini
 
-   .. path /etc/kolla/config/glance/ceph.conf
-   .. code-block:: ini
+   [global]
+   fsid = 1d89fec3-325a-4963-a950-c4afedd37fe3
+   mon_initial_members = ceph-0
+   mon_host = 192.168.0.56
+   auth_cluster_required = cephx
+   auth_service_required = cephx
+   auth_client_required = cephx
 
-      [global]
-      fsid = 1d89fec3-325a-4963-a950-c4afedd37fe3
-      mon_initial_members = ceph-0
-      mon_host = 192.168.0.56
-      auth_cluster_required = cephx
-      auth_service_required = cephx
-      auth_client_required = cephx
+.. code-block:: console
 
-#. Copy Ceph keyring to ``/etc/kolla/config/glance/<ceph_glance_keyring>``
+   $ cat /etc/kolla/config/glance/ceph.client.glance.keyring
 
-#. For copy-on-write set following in ``/etc/kolla/config/glance.conf``:
+   [client.glance]
+   key = AQAg5YRXS0qxLRAAXe6a4R1a15AoRx7ft80DhA==
 
-   .. path /etc/kolla/config/glance.conf
-   .. code-block:: ini
-
-      [GLOBAL]
-      show_image_direct_url = True
-
-.. warning::
-
-    ``show_image_direct_url`` can present a security risk if using more
-    than just Ceph as Glance backend(s). Please see
-    :glance-doc:`Glance show_image_direct_url <configuration/glance_api.html#DEFAULT.show_image_direct_url>`
+Kolla will pick up all files named ``ceph.*`` in this directory and copy them
+to the ``/etc/ceph/`` directory of the container.
 
 Cinder
 ------
 
-Ceph RBD can be used as a storage backend for Cinder volumes. Configuring
-Cinder for Ceph includes following steps:
+Configuring external Ceph for Cinder works very similar to
+Glance.
 
-#. When using external Ceph, there may be no nodes defined in the storage
-   group.  This will cause Cinder and related services relying on this group to
-   fail.  In this case, operator should add some nodes to the storage group,
-   all the nodes where ``cinder-volume`` and ``cinder-backup`` will run:
+Modify ``/etc/kolla/config/cinder/cinder-volume.conf`` file according to
+the following configuration:
 
-   .. code-block:: ini
+.. code-block:: ini
 
-      [storage]
-      control01
+   [DEFAULT]
+   enabled_backends=rbd-1
 
-#. Enable Cinder Ceph backend in ``globals.yml``:
+   [rbd-1]
+   rbd_ceph_conf=/etc/ceph/ceph.conf
+   rbd_user=cinder
+   backend_host=rbd:volumes
+   rbd_pool=volumes
+   volume_backend_name=rbd-1
+   volume_driver=cinder.volume.drivers.rbd.RBDDriver
+   rbd_secret_uuid = {{ cinder_rbd_secret_uuid }}
 
-   .. code-block:: yaml
+.. note::
 
-      cinder_backend_ceph: "yes"
+   ``cinder_rbd_secret_uuid`` can be found in ``/etc/kolla/passwords.yml`` file.
 
-#. Configure Ceph authentication details in ``/etc/kolla/globals.yml``:
+Modify ``/etc/kolla/config/cinder/cinder-backup.conf`` file according to
+the following configuration:
 
-   * ``ceph_cinder_keyring`` (default: ``ceph.client.cinder.keyring``)
-   * ``ceph_cinder_user`` (default: ``cinder``)
-   * ``ceph_cinder_pool_name`` (default: ``volumes``)
-   * ``ceph_cinder_backup_keyring``
-     (default: ``ceph.client.cinder-backup.keyring``)
-   * ``ceph_cinder_backup_user`` (default: ``cinder-backup``)
-   * ``ceph_cinder_backup_pool_name`` (default: ``backups``)
+.. code-block:: ini
 
-#. Copy Ceph configuration file to ``/etc/kolla/config/cinder/ceph.conf``
+   [DEFAULT]
+   backup_ceph_conf=/etc/ceph/ceph.conf
+   backup_ceph_user=cinder-backup
+   backup_ceph_chunk_size = 134217728
+   backup_ceph_pool=backups
+   backup_driver = cinder.backup.drivers.ceph.CephBackupDriver
+   backup_ceph_stripe_unit = 0
+   backup_ceph_stripe_count = 0
+   restore_discard_excess_bytes = true
 
-   Separate configuration options can be configured for
-   cinder-volume and cinder-backup by adding ceph.conf files to
-   ``/etc/kolla/config/cinder/cinder-volume`` and
-   ``/etc/kolla/config/cinder/cinder-backup`` respectively. They
-   will be merged with ``/etc/kolla/config/cinder/ceph.conf``.
+For more information about the Cinder backup configuration, see
+:cinder-doc:`Ceph backup driver <configuration/block-storage/backup/ceph-backup-driver.html>`.
 
-#. Copy Ceph keyring files to:
+Next, copy the ``ceph.conf`` file into ``/etc/kolla/config/cinder/``:
 
-   * ``/etc/kolla/config/cinder/cinder-volume/<ceph_cinder_keyring>``
-   * ``/etc/kolla/config/cinder/cinder-backup/<ceph_cinder_keyring>``
-   * ``/etc/kolla/config/cinder/cinder-backup/<ceph_cinder_backup_keyring>``
+.. code-block:: ini
+
+   [global]
+   fsid = 1d89fec3-325a-4963-a950-c4afedd37fe3
+   mon_initial_members = ceph-0
+   mon_host = 192.168.0.56
+   auth_cluster_required = cephx
+   auth_service_required = cephx
+   auth_client_required = cephx
+
+Separate configuration options can be configured for
+cinder-volume and cinder-backup by adding ceph.conf files to
+``/etc/kolla/config/cinder/cinder-volume`` and
+``/etc/kolla/config/cinder/cinder-backup`` respectively. They
+will be merged with ``/etc/kolla/config/cinder/ceph.conf``.
+
+Ceph keyrings are deployed per service and placed into
+``cinder-volume`` and ``cinder-backup`` directories, put the keyring files
+to these directories, for example:
 
 .. note::
 
     ``cinder-backup`` requires two keyrings for accessing volumes
     and backup pool.
 
-Nova must also be configured to allow access to Cinder volumes:
+.. code-block:: console
 
-#. Configure Ceph authentication details in ``/etc/kolla/globals.yml``:
+   $ cat /etc/kolla/config/cinder/cinder-backup/ceph.client.cinder.keyring
 
-   * ``ceph_cinder_keyring`` (default: ``ceph.client.cinder.keyring``)
+   [client.cinder]
+   key = AQAg5YRXpChaGRAAlTSCleesthCRmCYrfQVX1w==
 
-#. Copy Ceph keyring file(s) to:
+.. code-block:: console
 
-   * ``/etc/kolla/config/nova/<ceph_cinder_keyring>``
+   $ cat /etc/kolla/config/cinder/cinder-backup/ceph.client.cinder-backup.keyring
 
-If ``zun`` is enabled, and you wish to use cinder volumes with zun,
-it must also be configured to allow access to Cinder volumes:
+   [client.cinder-backup]
+   key = AQC9wNBYrD8MOBAAwUlCdPKxWZlhkrWIDE1J/w==
 
-#. Enable Cinder Ceph backend for Zun in ``globals.yml``:
+.. code-block:: console
 
-   .. code-block:: yaml
+   $ cat /etc/kolla/config/cinder/cinder-volume/ceph.client.cinder.keyring
 
-      zun_configure_for_cinder_ceph: "yes"
+   [client.cinder]
+   key = AQAg5YRXpChaGRAAlTSCleesthCRmCYrfQVX1w==
 
-#. Copy Ceph configuration file to:
-   * ``/etc/kolla/config/zun/zun-compute/ceph.conf``
-
-#. Copy Ceph keyring file(s) to:
-
-   * ``/etc/kolla/config/zun/zun-compute/<ceph_cinder_keyring>``
-
+It is important that the files are named ``ceph.client*``.
 
 Nova
 ----
 
-Ceph RBD can be used as a storage backend for Nova instance ephemeral disks.
-This avoids the requirement for local storage for instances on compute nodes.
-It improves the performance of migration, since instances' ephemeral disks do
-not need to be copied between hypervisors.
+Put ceph.conf, nova client keyring file and cinder client keyring file into
+``/etc/kolla/config/nova``:
 
-Configuring Nova for Ceph includes following steps:
+.. code-block:: console
 
-#. Enable Nova Ceph backend in ``globals.yml``:
+   $ ls /etc/kolla/config/nova
+   ceph.client.cinder.keyring ceph.client.nova.keyring ceph.conf
 
-   .. code-block:: yaml
+Configure nova-compute to use Ceph as the ephemeral back end by creating
+``/etc/kolla/config/nova/nova-compute.conf`` and adding the following
+configurations:
 
-      nova_backend_ceph: "yes"
+.. code-block:: ini
 
-#. Configure Ceph authentication details in ``/etc/kolla/globals.yml``:
+   [libvirt]
+   images_rbd_pool=vms
+   images_type=rbd
+   images_rbd_ceph_conf=/etc/ceph/ceph.conf
+   rbd_user=nova
 
-   * ``ceph_nova_keyring`` (by default it's the same as
-     ``ceph_cinder_keyring``)
-   * ``ceph_nova_user`` (by default it's the same as ``ceph_cinder_user``)
-   * ``ceph_nova_pool_name`` (default: ``vms``)
+.. note::
 
-#. Copy Ceph configuration file to ``/etc/kolla/config/nova/ceph.conf``
-#. Copy Ceph keyring file(s) to:
-
-   * ``/etc/kolla/config/nova/<ceph_nova_keyring>``
-
-   .. note::
-
-      If you are using a Ceph deployment tool that generates separate Ceph
-      keys for Cinder and Nova, you will need to override
-      ``ceph_nova_keyring`` and ``ceph_nova_user`` to match.
+   ``rbd_user`` might vary depending on your environment.
 
 Gnocchi
 -------
 
-Ceph object storage can be used as a storage backend for Gnocchi metrics.
-Configuring Gnocchi for Ceph includes following steps:
+Modify ``/etc/kolla/config/gnocchi/gnocchi.conf`` file according to
+the following configuration:
 
-#. Enable Gnocchi Ceph backend in ``globals.yml``:
+.. code-block:: ini
 
-   .. code-block:: yaml
+   [storage]
+   driver = ceph
+   ceph_username = gnocchi
+   ceph_keyring = /etc/ceph/ceph.client.gnocchi.keyring
+   ceph_conffile = /etc/ceph/ceph.conf
 
-      gnocchi_backend_storage: "ceph"
+Put ceph.conf and gnocchi client keyring file in
+``/etc/kolla/config/gnocchi``:
 
-#. Configure Ceph authentication details in ``/etc/kolla/globals.yml``:
+.. code-block:: console
 
-   * ``ceph_gnocchi_keyring``
-     (default: ``ceph.client.gnocchi.keyring``)
-   * ``ceph_gnocchi_user`` (default: ``gnocchi``)
-   * ``ceph_gnocchi_pool_name`` (default: ``gnocchi``)
-
-#. Copy Ceph configuration file to ``/etc/kolla/config/gnocchi/ceph.conf``
-#. Copy Ceph keyring to ``/etc/kolla/config/gnocchi/<ceph_gnocchi_keyring>``
+   $ ls /etc/kolla/config/gnocchi
+   ceph.client.gnocchi.keyring ceph.conf gnocchi.conf
 
 Manila
 ------
 
-CephFS can be used as a storage backend for Manila shares. Configuring Manila
-for Ceph includes following steps:
+Configuring Manila for Ceph includes four steps:
 
-#. Enable Manila Ceph backend in ``globals.yml``:
-
-   .. code-block:: yaml
-
-      enable_manila_backend_cephfs_native: "yes"
-
-#. Configure Ceph authentication details in ``/etc/kolla/globals.yml``:
-
-   * ``ceph_manila_keyring`` (default: ``ceph.client.manila.keyring``)
-   * ``ceph_manila_user`` (default: ``manila``)
-
-   .. note::
-
-      Required Ceph identity caps for manila user are documented in
-      :manila-doc:`CephFS Native driver <admin/cephfs_driver.html#authorizing-the-driver-to-communicate-with-ceph>`.
-
-#. Copy Ceph configuration file to ``/etc/kolla/config/manila/ceph.conf``
-#. Copy Ceph keyring to ``/etc/kolla/config/manila/<ceph_manila_keyring>``
-
-#. If using multiple filesystems (Ceph Pacific+), set
-   ``manila_cephfs_filesystem_name`` in ``/etc/kolla/globals.yml`` to the
-   name of the Ceph filesystem Manila should use.
-   By default, Manila will use the first filesystem returned by
-   the ``ceph fs volume ls`` command.
-
+#. Configure CephFS backend, setting ``enable_manila_backend_cephfs_native``
+#. Create Ceph configuration file in ``/etc/ceph/ceph.conf``
+#. Create Ceph keyring file in ``/etc/ceph/ceph.client.<username>.keyring``
 #. Setup Manila in the usual way
+
+Step 1 is done by using setting ``enable_manila_backend_cephfs_native=true``
+
+Now put ceph.conf and the keyring file (name depends on the username created
+in Ceph) into the same directory, for example:
+
+.. path /etc/kolla/config/manila/ceph.conf
+.. code-block:: ini
+
+   [global]
+   fsid = 1d89fec3-325a-4963-a950-c4afedd37fe3
+   mon_host = 192.168.0.56
+   auth_cluster_required = cephx
+   auth_service_required = cephx
+   auth_client_required = cephx
+
+.. code-block:: console
+
+   $ cat /etc/kolla/config/manila/ceph.client.manila.keyring
+
+   [client.manila]
+   key = AQAg5YRXS0qxLRAAXe6a4R1a15AoRx7ft80DhA==
 
 For more details on the rest of the Manila setup, such as creating the share
 type ``default_share_type``, please see :doc:`Manila in Kolla <manila-guide>`.
 
 For more details on the CephFS Native driver, please see
-:manila-doc:`CephFS Native driver <admin/cephfs_driver.html>`.
-
-RadosGW
--------
-
-As of the Xena 13.0.0 release, Kolla Ansible supports integration with Ceph
-RadosGW. This includes:
-
-* Registration of Swift-compatible endpoints in Keystone
-* Load balancing across RadosGW API servers using HAProxy
-
-See the `Ceph documentation
-<https://docs.ceph.com/en/latest/radosgw/keystone/>`__ for further information,
-including changes that must be applied to the Ceph cluster configuration.
-
-Enable Ceph RadosGW integration:
-
-.. code-block:: yaml
-
-   enable_ceph_rgw: true
-
-Keystone integration
-====================
-
-A Keystone user and endpoints are registered by default, however this may be
-avoided by setting ``enable_ceph_rgw_keystone`` to ``false``. If registration
-is enabled, the username is defined via ``ceph_rgw_keystone_user``, and this
-defaults to ``ceph_rgw``. The hostnames used by the endpoints default to
-``ceph_rgw_external_fqdn`` and ``ceph_rgw_internal_fqdn`` for the public and
-internal endpoints respectively. These default to ``kolla_external_fqdn`` and
-``kolla_internal_fqdn`` respectively. The port used by the endpoints is defined
-via ``ceph_rgw_port``, and defaults to 6780.
-
-By default RadosGW supports both Swift and S3 API, and it is not completely
-compatible with Swift API. The option ``ceph_rgw_swift_compatibility`` can
-enable/disable complete RadosGW compatibility with Swift API.  This should
-match the configuration used by Ceph RadosGW. After changing the value, run
-the ``kolla-ansible deploy`` command to enable.
-
-By default, the RadosGW endpoint URL does not include the project (account) ID.
-This prevents cross-project and public object access. This can be resolved by
-setting ``ceph_rgw_swift_account_in_url`` to ``true``. This should match the
-``rgw_swift_account_in_url`` configuration option in Ceph RadosGW.
-
-Load balancing
-==============
-
-.. warning::
-
-   Users of Ceph RadosGW can generate very high volumes of traffic. It is
-   advisable to use a separate load balancer for RadosGW for anything other
-   than small or lightly utilised RadosGW deployments, however this is
-   currently out of scope for Kolla Ansible.
-
-Load balancing is enabled by default, however this may be avoided by setting
-``enable_ceph_rgw_loadbalancer`` to ``false``. If using load balancing, the
-RadosGW hosts and ports must be configured. Each item should contain
-``host`` and ``port`` keys. The ``ip`` and ``port`` keys are optional. If
-``ip`` is not specified, the ``host`` values should be resolvable from the host
-running HAProxy. If the ``port`` is not specified, the default HTTP (80) or
-HTTPS (443) port will be used. For example:
-
-.. code-block:: yaml
-
-   ceph_rgw_hosts:
-     - host: rgw-host-1
-     - host: rgw-host-2
-       ip: 10.0.0.42
-       port: 8080
-
-The HAProxy frontend port is defined via ``ceph_rgw_port``, and defaults to
-6780.
-
-Cephadm and Ceph Client Version
-===============================
-When configuring Zun with Cinder volumes, kolla-ansible installs some
-Ceph client packages on zun-compute hosts. You can set the version
-of the Ceph packages installed by,
-
-#. Configuring Ceph version details in ``/etc/kolla/globals.yml``:
-
-   * ``ceph_version`` (default: ``pacific``)
+:manila-doc:`CephFS driver <admin/cephfs_driver.html>`.

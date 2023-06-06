@@ -147,70 +147,54 @@ Package repositories
 --------------------
 
 If the ``enable_docker_repo`` flag is set, then a package repository for Docker
-packages will be configured. Kolla Ansible uses the
-'Community Edition' packages from https://download.docker.com.
+packages will be configured. There are two sets of package repositories
+provided by Docker - 'legacy' packages from https://dockerproject.org, and new
+'Community Edition' packages from https://download.docker.com. To use legacy
+packages, set ``docker_legacy_packages`` to ``true``, or to use new packages
+set it to ``false``.  The new packages are used by default.
 
 Various other configuration options are available beginning
-``docker_(apt|yum)_``. Typically these do not need to be changed.
+``docker[_(new|legacy)]_(apt|yum)_``. Typically these do not need to be
+changed.
 
 Configuration
 -------------
 
 The ``docker_storage_driver`` variable is optional. If set, it defines the
-`storage driver
+`storage (graph) driver
 <https://docs.docker.com/storage/storagedriver/select-storage-driver/>`__ to
 use for Docker.
 
 The ``docker_runtime_directory`` variable is optional. If set, it defines the
-runtime (``data-root``) directory for Docker.
+runtime (``--graph``) directory for Docker.
 
 The ``docker_registry`` variable, which is not set by default, defines the
-address of the Docker registry. If the variable is not set,
-`Quay.io <https://quay.io/organization/openstack.kolla>`__ will be used.
+address of the Docker registry. If the variable is not set, Dockerhub will be
+used.
 
-The ``docker_registry_insecure`` variable, which defaults to ``false``,
-defines whether to configure ``docker_registry`` as an insecure registry.
-Insecure registries allow to use broken certificate chains and HTTP without
-TLS but it's strongly discouraged in production unless in very specific
-circumstances. For more discussion, see the official Docker documentation on
-`insecure registries <https://docs.docker.com/registry/insecure/>`__.
-Additionally, notice this will disable Docker registry authentication.
+The ``docker_registry_insecure`` variable, which defaults to ``true`` if
+``docker_registry`` is set, or ``false`` otherwise, defines whether to
+configure ``docker_registry`` as an insecure registry. Insecure registries use
+HTTP rather than HTTPS.
 
 The ``docker_log_max_file`` variable, which defaults to ``5``, defines the
 maximum number of log files to retain per container. The
 ``docker_log_max_size`` variable, which defaults to ``50m``, defines the
 maximum size of each rotated log file per container.
 
-The ``docker_http_proxy``, ``docker_https_proxy`` and ``docker_no_proxy``
-variables can be used to configure Docker Engine to connect to the internet
-using http/https proxies.
+The ``docker_custom_option`` variable is optional. If set, it defines
+additional options to pass to the Docker engine via the Systemd unit file.
 
-Additional options for the Docker engine can be passed in
-``docker_custom_config`` variable. It will be stored in ``daemon.json`` config
-file. Example:
+Disabling firewalls
+~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: json
+Kolla Ansible does not support configuration of host firewalls, and instead
+attempts to disable them.
 
-    {
-        "experimental": false
-    }
+On Debian family systems where the UFW firewall is enabled, a default policy
+will be added to allow all traffic.
 
-
-Enabling/Disabling firewalls
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Kolla Ansible supports configuration of host firewalls.
-
-Currently only Firewalld is supported.
-
-On Debian family systems Firewalld will need to be installed beforehand.
-
-On Red Hat family systems firewalld should be installed by default.
-
-To enable configuration of the system firewall set ``disable_firewall``
-to ``false`` and set ``enable_external_api_firewalld`` to ``true``.
-
-For further information. See :doc:`../../user/security`
+On Red Hat family systems where firewalld is installed, it will be disabled.
 
 Creation of Python virtual environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -233,3 +217,9 @@ Configuration of SELinux
 On Red Hat family systems, if ``change_selinux`` is set (default is ``true``),
 then the SELinux state will be set to ``selinux_state`` (default
 ``permissive``). See :doc:`../../user/security` for further information.
+
+Configuration of NTP daemon
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This is optional, and enabled by ``enable_host_ntp``, which is ``false`` by
+default.

@@ -1,6 +1,6 @@
-{% set network = 'swift_replication' if 'replicat' in service_name else 'swift_storage' %}
+{% set interface = swift_replication_interface if 'replicat' in service_name else swift_storage_interface %}
 [DEFAULT]
-bind_ip = {{ network | kolla_address }}
+bind_ip = {{ hostvars[inventory_hostname]['ansible_' + interface]['ipv4']['address'] }}
 bind_port = {{ swift_object_server_port }}
 devices = {{ swift_devices_mount_point }}
 mount_check = false
@@ -10,19 +10,13 @@ log_udp_port = {{ syslog_udp_port }}
 log_name = {{ service_name }}
 log_facility = {{ syslog_swift_facility }}
 log_level = {{ swift_log_level }}
-workers = {{ swift_object_workers }}
+workers = {{ openstack_service_workers }}
 
 [pipeline:main]
 {% if service_name == 'swift-object-expirer' %}
 pipeline = proxy-server
 {% else %}
-pipeline = {% if enable_swift_recon %}recon {% endif %}object-server
-{% endif %}
-
-{% if enable_swift_recon %}
-[filter:recon]
-use = egg:swift#recon
-recon_cache_path = /var/cache/swift
+pipeline = object-server
 {% endif %}
 
 [app:object-server]

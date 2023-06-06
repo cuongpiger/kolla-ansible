@@ -14,12 +14,11 @@
 {% if enable_influxdb | bool %}
 {% for host in groups['influxdb'] %}
 [[outputs.influxdb]]
-  urls = ["{{ influxdb_proto }}://{{ 'api' | kolla_address(host) }}:{{ influxdb_http_port }}"]
+  urls = ["{{ influxdb_proto }}://{{ hostvars[host]['ansible_' + hostvars[host]['api_interface']]['ipv4']['address']}}:{{ influxdb_http_port }}"]
   database = "telegraf" # required
   retention_policy = "autogen"
   write_consistency = "any"
   timeout = "5s"
-  tls_ca = "{{ openstack_cacert }}"
 {% endfor %}
 {% endif %}
 [[inputs.cpu]]
@@ -28,7 +27,7 @@
   fielddrop = ["time_*"]
 {% if enable_collectd | bool and inventory_hostname in groups['collectd'] %}
 [[inputs.socket_listener]]
-  service_address = "udp://{{ 'api' | kolla_address | put_address_in_context('url') }}:{{ collectd_udp_port }}"
+  service_address = "udp://{{ hostvars[inventory_hostname]['ansible_' + api_interface]['ipv4']['address'] }}:{{ collectd_udp_port }}"
   name_prefix = "collectd_"
   data_format = "collectd"
   collectd_typesdb = ["/usr/share/collectd/types.db"]
@@ -38,7 +37,7 @@
 [[inputs.diskio]]
 {% if inventory_hostname in groups['influxdb'] and enable_influxdb | bool %}
 [[inputs.influxdb]]
-  urls = ["{{ influxdb_proto }}://{{ 'api' | kolla_address | put_address_in_context('url') }}:{{ influxdb_http_port }}/debug/vars"]
+  urls = ["{{ influxdb_proto }}://{{ hostvars[inventory_hostname]['ansible_' + api_interface]['ipv4']['address'] }}:{{ influxdb_http_port }}/debug/vars"]
 {% endif %}
 [[inputs.kernel]]
 [[inputs.mem]]
@@ -47,39 +46,47 @@
 [[inputs.system]]
 [[inputs.net]]
   interfaces = []
-{% if inventory_hostname in groups['loadbalancer'] and enable_haproxy | bool %}
+{% if inventory_hostname in groups['chrony'] and enable_chrony | bool %}
+[[inputs.chrony]]
+  dns_lookup = false
+{% endif %}
+{% if inventory_hostname in groups['haproxy'] and enable_haproxy | bool %}
 [[inputs.haproxy]]
-  servers = ["{{ haproxy_proto }}://{{ haproxy_user }}:{{ haproxy_password }}@{{ api_interface_address | put_address_in_context('url') }}:{{ haproxy_stats_port }}"]
+  servers = ["{{ haproxy_proto }}://{{ haproxy_user }}:{{ haproxy_password }}@{{ api_interface_address }}:{{ haproxy_stats_port }}"]
 {% endif %}
 {% if inventory_hostname in groups['memcached'] and enable_memcached | bool %}
 [[inputs.memcached]]
-  servers = ["{{ api_interface_address | put_address_in_context('url') }}:{{ memcached_port }}"]
+  servers = ["{{ api_interface_address }}:{{ memcached_port }}"]
 {% endif %}
-{% if inventory_hostname in groups['opensearch'] and enable_opensearch | bool %}
+{% if inventory_hostname in groups['elasticsearch'] and enable_elasticsearch | bool %}
 [[inputs.elasticsearch]]
-  servers = ["{{ opensearch_proto }}://{{ api_interface_address | put_address_in_context('url') }}:{{ opensearch_port }}"]
+  servers = ["{{ elasticsearch_proto }}://{{ api_interface_address }}:{{ elasticsearch_port }}"]
   local = true
   cluster_health = true
 {% endif %}
 {% if inventory_hostname in groups['rabbitmq'] and enable_rabbitmq | bool %}
 [[inputs.rabbitmq]]
-  url = "{{ rabbitmq_proto }}://{{ api_interface_address | put_address_in_context('url') }}:{{ rabbitmq_management_port }}"
+  url = "{{ rabbitmq_proto }}://{{ api_interface_address }}:{{ rabbitmq_management_port }}"
   username = "{{ rabbitmq_user }}"
   password = "{{ rabbitmq_password }}"
 {% endif %}
 {% if inventory_hostname in groups['outward-rabbitmq'] and enable_outward_rabbitmq | bool %}
 [[inputs.rabbitmq]]
-  url = "{{ outward_rabbitmq_proto }}://{{ api_interface_address | put_address_in_context('url') }}:{{ outward_rabbitmq_management_port }}"
+  url = "{{ outward_rabbitmq_proto }}://{{ api_interface_address }}:{{ outward_rabbitmq_management_port }}"
   username = "{{ outward_rabbitmq_user }}"
   password = "{{ outward_rabbitmq_password }}"
 {% endif %}
 {% if inventory_hostname in groups['redis'] and enable_redis | bool %}
 [[inputs.redis]]
-  servers = ["tcp://:{{ redis_master_password }}@{{ api_interface_address | put_address_in_context('url') }}:{{ redis_port }}"]
+  servers = ["tcp://:{{ redis_master_password }}@{{ api_interface_address }}:{{ redis_port }}"]
+{% endif %}
+{% if inventory_hostname in groups['zookeeper'] and enable_zookeeper | bool %}
+[[inputs.zookeeper]]
+  servers = ["{{ api_interface_address }}:{{ zookeeper_client_port }}"]
 {% endif %}
 {% if inventory_hostname in groups['mariadb'] and (enable_mariadb or enable_external_mariadb_load_balancer) | bool %}
 [[inputs.mysql]]
-  servers = ["{{ database_user }}:{{ database_password }}@{{ mariadb_proto }}({{ api_interface_address | put_address_in_context('url') }}:{{ database_port }})/"]
+  servers = ["{{ database_user }}:{{ database_password }}@{{ mariadb_proto }}({{ api_interface_address }}:{{ database_port }})/"]
   perf_events_statements_digest_text_limit  = 120
   perf_events_statements_limit              = 250
   perf_events_statements_time_limit         = 86400
@@ -96,17 +103,4 @@
   gather_file_events_stats                  = true
   gather_perf_events_statements             = true
   interval_slow                             = "30m"
-{% endif %}
-{% if telegraf_enable_docker_input | bool %}
-[[inputs.docker]]
-  endpoint = "unix:///var/run/docker.sock"
-  gather_services = false
-  container_names = []
-  container_name_include = []
-  container_name_exclude = []
-  timeout = "5s"
-  perdevice = true
-  total = false
-  docker_label_include = []
-  docker_label_exclude = []
 {% endif %}

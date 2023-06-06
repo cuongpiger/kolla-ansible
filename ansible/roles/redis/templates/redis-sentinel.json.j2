@@ -1,9 +1,9 @@
 {
-    "command": "redis-sentinel {{ redis_generated_conf_path }}",
+    "command": "redis-sentinel /etc/redis/redis.conf",
     "config_files": [
         {
             "source": "{{ container_config_directory }}/redis.conf",
-            "dest": "{{ redis_conf_path }}",
+            "dest": "/etc/redis/redis.conf",
             "owner": "redis",
             "perm": "0600"
         }
@@ -13,10 +13,6 @@
             "path": "/var/log/kolla/redis",
             "owner": "redis:redis",
             "recurse": true
-        },
-        {
-            "path": "/etc/redis",
-            "owner": "redis:redis"
         }
     ]
 }

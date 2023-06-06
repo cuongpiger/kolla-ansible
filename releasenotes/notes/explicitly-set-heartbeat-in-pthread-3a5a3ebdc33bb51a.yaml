@@ -1,5 +1,0 @@
----
-fixes:
-  - |
-    The value of ``[oslo_messaging_rabbit] heartbeat_in_pthread`` is explicitly
-    set to either ``true`` for wsgi applications, or ``false`` otherwise.

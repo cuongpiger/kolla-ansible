@@ -1,6 +1,5 @@
 ---
 - name: Cloning freezer source repository for development
-  become: true
   git:
     repo: "{{ freezer_git_repository }}"
     dest: "{{ kolla_dev_repos_directory }}/{{ project_name }}"
@@ -8,7 +7,6 @@
     version: "{{ freezer_source_version }}"
 
 - name: Cloning freezer-api source repository for development
-  become: true
   git:
     repo: "{{ freezer_api_git_repository }}"
     dest: "{{ kolla_dev_repos_directory }}/freezer-api"

@@ -1,26 +1,19 @@
 {% set log_dir = '/var/log/kolla/placement' %}
-{% set wsgi_directory = '/var/lib/kolla/venv/bin' %}
-{% if placement_enable_tls_backend | bool %}
-{% if kolla_base_distro in ['centos', 'rocky']  %}
-LoadModule ssl_module /usr/lib64/httpd/modules/mod_ssl.so
+{% if placement_install_type == 'binary' %}
+    {% set python_path = '/usr/lib/python3/dist-packages' if kolla_base_distro == 'ubuntu' else '/usr/lib/python2.7/site-packages' %}
 {% else %}
-LoadModule ssl_module /usr/lib/apache2/modules/mod_ssl.so
+    {% set python_path = '/var/lib/kolla/venv/lib/python2.7/site-packages' %}
 {% endif %}
-{% endif %}
-Listen {{ api_interface_address | put_address_in_context('url') }}:{{ placement_api_listen_port }}
+{% set wsgi_directory = '/usr/bin' if placement_install_type == 'binary' else '/var/lib/kolla/venv/bin' %}
+
+Listen {{ api_interface_address }}:{{ placement_api_listen_port }}
 
 ServerSignature Off
 ServerTokens Prod
 TraceEnable off
-TimeOut {{ kolla_httpd_timeout }}
-KeepAliveTimeout {{ kolla_httpd_keep_alive }}
-
-{% if placement_logging_debug | bool %}
-LogLevel info
-{% endif %}
 
 <VirtualHost *:{{ placement_api_listen_port }}>
-    WSGIDaemonProcess placement-api processes={{ placement_api_workers }} threads=1 user=placement group=placement display-name=placement-api
+    WSGIDaemonProcess placement-api processes={{ openstack_service_workers }} threads=1 user=placement group=placement display-name=%{GROUP} python-path={{ python_path }}
     WSGIProcessGroup placement-api
     WSGIScriptAlias / {{ wsgi_directory }}/placement-api
     WSGIApplicationGroup %{GLOBAL}
@@ -36,9 +29,4 @@ LogLevel info
             Require all granted
         </Files>
     </Directory>
-{% if placement_enable_tls_backend | bool %}
-    SSLEngine on
-    SSLCertificateFile /etc/placement/certs/placement-cert.pem
-    SSLCertificateKeyFile /etc/placement/certs/placement-key.pem
-{% endif %}
 </VirtualHost>

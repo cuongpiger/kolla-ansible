@@ -69,17 +69,97 @@ RabbitMQ doesn't work with IP address, hence the IP address of
 ``api_interface`` should be resolvable by hostnames to make sure that
 all RabbitMQ Cluster hosts can resolve each others hostname beforehand.
 
-.. _tls-configuration:
-
 TLS Configuration
 ~~~~~~~~~~~~~~~~~
 
-Configuration of TLS is now covered :doc:`here <tls>`.
+An additional endpoint configuration option is to enable or disable
+TLS protection for the external VIP. TLS allows a client to authenticate
+the OpenStack service endpoint and allows for encryption of the requests
+and responses.
+
+.. note::
+
+   The kolla_internal_vip_address and kolla_external_vip_address must
+   be different to enable TLS on the external network.
+
+The configuration variables that control TLS networking are:
+
+- kolla_enable_tls_external
+- kolla_external_fqdn_cert
+
+The default for TLS is disabled, to enable TLS networking:
+
+.. code-block:: yaml
+
+   kolla_enable_tls_external: "yes"
+   kolla_external_fqdn_cert: "{{ node_config }}/certificates/mycert.pem"
+
+.. note::
+
+   TLS authentication is based on certificates that have been
+   signed by trusted Certificate Authorities. Examples of commercial
+   CAs are Comodo, Symantec, GoDaddy, and GlobalSign. Letsencrypt.org
+   is a CA that will provide trusted certificates at no charge. Many
+   company's IT departments will provide certificates within that
+   company's domain. If using a trusted CA is not possible for your
+   situation, you can use `OpenSSL <https://www.openssl.org>`__
+   to create your own company's domain or see the section below about
+   kolla generated self-signed certificates.
+
+Two certificate files are required to use TLS securely with authentication.
+These two files will be provided by your Certificate Authority. These
+two files are the server certificate with private key and the CA certificate
+with any intermediate certificates. The server certificate needs to be
+installed with the kolla deployment and is configured with the
+``kolla_external_fqdn_cert`` parameter. If the server certificate provided
+is not already trusted by the client, then the CA certificate file will
+need to be distributed to the client.
+
+When using TLS to connect to a public endpoint, an OpenStack client will
+have settings similar to this:
+
+.. code-block:: shell
+
+   export OS_PROJECT_DOMAIN_ID=default
+   export OS_USER_DOMAIN_ID=default
+   export OS_PROJECT_NAME=demo
+   export OS_USERNAME=demo
+   export OS_PASSWORD=demo-password
+   export OS_AUTH_URL=https://mykolla.example.net:5000
+   # os_cacert is optional for trusted certificates
+   export OS_CACERT=/etc/pki/mykolla-cacert.crt
+   export OS_IDENTITY_API_VERSION=3
+
+Self-Signed Certificates
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note::
+
+   Self-signed certificates should never be used in production.
+
+It is not always practical to get a certificate signed by a well-known
+trust CA, for example a development or internal test kolla deployment. In
+these cases it can be useful to have a self-signed certificate to use.
+
+For convenience, the ``kolla-ansible`` command will generate the necessary
+certificate files based on the information in the ``globals.yml``
+configuration file:
+
+.. code-block:: console
+
+   kolla-ansible certificates
+
+The files haproxy.pem and haproxy-ca.pem will be generated and stored
+in the ``/etc/kolla/certificates/`` directory.
 
 .. _service-config:
 
 OpenStack Service Configuration in Kolla
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note::
+
+   As of now kolla only supports config overrides for ini based configs.
 
 An operator can change the location where custom config files are read from by
 editing ``/etc/kolla/globals.yml`` and adding the following line.
@@ -130,40 +210,6 @@ on host myhost, the operator needs to create file
    cpu_allocation_ratio = 16.0
    ram_allocation_ratio = 5.0
 
-This method of merging configuration sections is supported for all services
-using Oslo Config, which includes the vast majority of OpenStack services,
-and in some cases for services using YAML configuration. Since the INI format
-is an informal standard, not all INI files can be merged in this way. In
-these cases Kolla supports overriding the entire config file.
-
-Additional flexibility can be introduced by using Jinja conditionals in the
-config files.  For example, you may create Nova cells which are homogeneous
-with respect to the hypervisor model. In each cell, you may wish to configure
-the hypervisors differently, for example the following override shows one way
-of setting the ``bandwidth_poll_interval`` variable as a function of the cell:
-
-.. path /etc/kolla/config/nova.conf
-.. code-block:: ini
-
-   [DEFAULT]
-   {% if 'cell0001' in group_names %}
-   bandwidth_poll_interval = 100
-   {% elif 'cell0002' in group_names %}
-   bandwidth_poll_interval = -1
-   {% else %}
-   bandwidth_poll_interval = 300
-   {% endif %}
-
-An alternative to Jinja conditionals would be to define a variable for the
-``bandwidth_poll_interval`` and set it in according to your requirements
-in the inventory group or host vars:
-
-.. path /etc/kolla/config/nova.conf
-.. code-block:: ini
-
-   [DEFAULT]
-   bandwidth_poll_interval = {{ bandwidth_poll_interval }}
-
 Kolla allows the operator to override configuration globally for all services.
 It will look for a file called ``/etc/kolla/config/global.conf``.
 
@@ -176,34 +222,27 @@ operator needs to create ``/etc/kolla/config/global.conf`` with content:
    [database]
    max_pool_size = 100
 
-OpenStack policy customisation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In case the operators want to customize ``policy.json`` file, they should
+create a full policy file for specific project in the same directory like above
+and Kolla will overwrite default policy file with it. Be aware, with some
+projects are keeping full policy file in source code, operators just need to
+copy it but with some others are defining default rules in codebase, they have
+to generate it.
 
-OpenStack services allow customisation of policy. Since the Queens release,
-default policy configuration is defined within the source code for each
-service, meaning that operators only need to override rules they wish to
-change. Projects typically provide documentation on their default policy
-configuration, for example, :keystone-doc:`Keystone <configuration/policy>`.
+For example to overwrite ``policy.json`` file of Neutron project, the operator
+needs to grab ``policy.json`` from Neutron project source code, update rules
+and then put it to ``/etc/kolla/config/neutron/policy.json``.
 
-Policy can be customised via JSON or YAML files. As of the Wallaby release, the
-JSON format is deprecated in favour of YAML. One major benefit of YAML is that
-it allows for the use of comments.
+.. note::
 
-For example, to customise the Neutron policy in YAML format, the operator
-should add the customised rules in ``/etc/kolla/config/neutron/policy.yaml``.
+   Currently kolla-ansible only support JSON and YAML format for policy file.
 
-The operator can make these changes after services have been deployed by using
-the following command:
+The operator can make these changes after services were already deployed by
+using following command:
 
 .. code-block:: console
 
-   kolla-ansible deploy
-
-In order to present a user with the correct interface, Horizon includes policy
-for other services. Customisations made to those services may need to be
-replicated in Horizon. For example, to customise the Neutron policy in YAML
-format for Horizon, the operator should add the customised rules in
-``/etc/kolla/config/horizon/neutron_policy.yaml``.
+   kolla-ansible reconfigure
 
 IP Address Constrained Environments
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -219,9 +258,6 @@ adding:
 Note this method is not recommended and generally not tested by the
 Kolla community, but included since sometimes a free IP is not available
 in a testing environment.
-
-In this mode it is still necessary to configure ``kolla_internal_vip_address``,
-and it should take the IP address of the ``api_interface`` interface.
 
 External Elasticsearch/Kibana environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -270,48 +306,3 @@ By default, Swift and HAProxy use ``local0`` and ``local1``, respectively.
    syslog_swift_facility: "local0"
    syslog_haproxy_facility: "local1"
 
-If Glance TLS backend is enabled (``glance_enable_tls_backend``), the syslog
-facility for the ``glance_tls_proxy`` service uses ``local2`` by default. This
-can be set via ``syslog_glance_tls_proxy_facility``.
-
-If Neutron TLS backend is enabled (``neutron_enable_tls_backend``), the syslog
-facility for the ``neutron_tls_proxy`` service uses ``local4`` by default.
-This can be set via ``syslog_neutron_tls_proxy_facility``.
-
-Mount additional Docker volumes in containers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-It is sometimes useful to be able to mount additional Docker volumes into
-one or more containers. This may be to integrate 3rd party components into
-OpenStack, or to provide access to site-specific data such as x.509
-certificate bundles.
-
-Additional volumes may be specified at three levels:
-
-* globally
-* per-service (e.g. nova)
-* per-container (e.g. ``nova-api``)
-
-To specify additional volumes globally for all containers, set
-``default_extra_volumes`` in ``globals.yml``. For example:
-
-.. code-block:: yaml
-
-  default_extra_volumes:
-    - "/etc/foo:/etc/foo"
-
-To specify additional volumes for all containers in a service, set
-``<service_name>_extra_volumes`` in ``globals.yml``. For example:
-
-.. code-block:: yaml
-
-  nova_extra_volumes:
-    - "/etc/foo:/etc/foo"
-
-To specify additional volumes for a single container, set
-``<container_name>_extra_volumes`` in ``globals.yml``. For example:
-
-.. code-block:: yaml
-
-  nova_libvirt_extra_volumes:
-    - "/etc/foo:/etc/foo"

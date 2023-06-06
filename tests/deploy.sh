@@ -10,22 +10,36 @@ export PYTHONUNBUFFERED=1
 function deploy {
     RAW_INVENTORY=/etc/kolla/inventory
 
-    source $KOLLA_ANSIBLE_VENV_PATH/bin/activate
+    # Create dummy interface for neutron
+    ansible -m shell -i ${RAW_INVENTORY} -b -a "ip l a fake_interface type dummy" all
 
     #TODO(inc0): Post-deploy complains that /etc/kolla is not writable. Probably we need to include become there
     sudo chmod -R 777 /etc/kolla
-    # generate self-signed certificates for the optional internal TLS tests
-    if [[ "$TLS_ENABLED" = "True" ]]; then
-        kolla-ansible -i ${RAW_INVENTORY} -vvv certificates > /tmp/logs/ansible/certificates
-    fi
     # Actually do the deployment
-    kolla-ansible -i ${RAW_INVENTORY} -vvv prechecks &> /tmp/logs/ansible/deploy-prechecks
-    kolla-ansible -i ${RAW_INVENTORY} -vvv pull &> /tmp/logs/ansible/pull
-    kolla-ansible -i ${RAW_INVENTORY} -vvv deploy &> /tmp/logs/ansible/deploy
-    kolla-ansible -i ${RAW_INVENTORY} -vvv post-deploy &> /tmp/logs/ansible/post-deploy
+    tools/kolla-ansible -i ${RAW_INVENTORY} -vvv prechecks &> /tmp/logs/ansible/deploy-prechecks
+    # TODO(jeffrey4l): add pull action when we have a local registry
+    # service in CI
+    tools/kolla-ansible -i ${RAW_INVENTORY} -vvv deploy &> /tmp/logs/ansible/deploy
+    tools/kolla-ansible -i ${RAW_INVENTORY} -vvv post-deploy &> /tmp/logs/ansible/post-deploy
+    tools/kolla-ansible -i ${RAW_INVENTORY} -vvv check &> /tmp/logs/ansible/check-deploy
 
-    if [[ $HAS_UPGRADE == 'no' ]]; then
-        kolla-ansible -i ${RAW_INVENTORY} -vvv validate-config &> /tmp/logs/ansible/validate-config
+    if [[ ${ACTION} != "mariadb" ]]; then
+        init_runonce
+    fi
+}
+
+function init_runonce {
+    . /etc/kolla/admin-openrc.sh
+    . ~/openstackclient-venv/bin/activate
+
+    # Wait for service ready
+    sleep 15
+
+    if ! openstack image show cirros >/dev/null 2>&1; then
+        echo "Initialising OpenStack resources via init-runonce"
+        tools/init-runonce &> /tmp/logs/ansible/init-runonce
+    else
+        echo "Not running init-runonce - resources exist"
     fi
 }
 

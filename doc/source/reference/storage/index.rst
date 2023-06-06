@@ -8,11 +8,11 @@ supported by kolla.
 .. toctree::
    :maxdepth: 1
 
+   ceph-guide
    external-ceph-guide
    cinder-guide
    cinder-guide-hnas
    cinder-guide-quobyte
-   cinder-guide-pure
    manila-guide
    manila-hnas-guide
    swift-guide

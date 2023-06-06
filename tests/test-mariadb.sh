@@ -11,7 +11,7 @@ export PYTHONUNBUFFERED=1
 
 function mariadb_stop {
     echo "Stopping the database cluster"
-    kolla-ansible -i ${RAW_INVENTORY} -vvv stop --yes-i-really-really-mean-it --tags mariadb --skip-tags common
+    tools/kolla-ansible -i ${RAW_INVENTORY} -vvv stop --yes-i-really-really-mean-it --tags mariadb --skip-tags common
     if [[ $(sudo docker ps -q | grep mariadb | wc -l) -ne 0 ]]; then
         echo "Failed to stop MariaDB cluster"
         return 1
@@ -21,7 +21,7 @@ function mariadb_stop {
 function mariadb_recovery {
     # Recover the database cluster.
     echo "Recovering the database cluster"
-    kolla-ansible -i ${RAW_INVENTORY} -vvv mariadb_recovery --tags mariadb --skip-tags common
+    tools/kolla-ansible -i ${RAW_INVENTORY} -vvv mariadb_recovery --tags mariadb --skip-tags common
 }
 
 function test_recovery {
@@ -32,7 +32,6 @@ function test_recovery {
 
 function test_mariadb_logged {
     RAW_INVENTORY=/etc/kolla/inventory
-    source $KOLLA_ANSIBLE_VENV_PATH/bin/activate
     test_recovery
 }
 
