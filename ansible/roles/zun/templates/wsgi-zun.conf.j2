@@ -4,7 +4,6 @@ Listen {{ api_interface_address | put_address_in_context('url') }}:{{ zun_api_po
 ServerSignature Off
 ServerTokens Prod
 TraceEnable off
-TimeOut {{ kolla_httpd_timeout }}
 KeepAliveTimeout {{ kolla_httpd_keep_alive }}
 
 ErrorLog "{{ zun_log_dir }}/apache-error.log"
@@ -35,7 +34,7 @@ LogLevel info
   LogFormat "%{X-Forwarded-For}i %l %u %t \"%r\" %>s %b %D \"%{Referer}i\" \"%{User-Agent}i\"" logformat
   CustomLog "{{ zun_log_dir }}/zun_api_wsgi_access.log" logformat
   WSGIApplicationGroup %{GLOBAL}
-  WSGIDaemonProcess zun group=zun processes={{ zun_api_workers }} threads=1 user=zun
+  WSGIDaemonProcess zun group=zun processes={{ openstack_service_workers }} threads=1 user=zun
   WSGIProcessGroup zun
   WSGIScriptAlias / "/var/www/cgi-bin/zun/app.wsgi"
 </VirtualHost>

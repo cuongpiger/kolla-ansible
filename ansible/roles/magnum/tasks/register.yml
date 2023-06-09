@@ -9,7 +9,6 @@
 - name: Creating Magnum trustee domain
   become: true
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: "os_keystone_domain"
     module_args:
       name: "{{ magnum_trustee_domain }}"
@@ -24,7 +23,6 @@
 - name: Creating Magnum trustee user
   become: true
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: "os_user"
     module_args:
       name: "{{ magnum_trustee_domain_admin }}"
@@ -39,10 +37,9 @@
 - name: Creating Magnum trustee user role
   become: true
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: "os_user_role"
     module_args:
-      domain: "{{ trustee_domain.domain.id }}"
+      domain: "{{ trustee_domain.id }}"
       user: "{{ magnum_trustee_domain_admin }}"
       role: "admin"
       auth: "{{ openstack_magnum_auth }}"

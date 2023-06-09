@@ -5,8 +5,5 @@
   tag syslog
   severity_key log_level
   source_hostname_key Hostname
-  <parse>
-    @type regexp
-    expression /^(?<Payload>.*)$/
-  </parse>
+  format /^(?<Payload>.*)$/
 </source>

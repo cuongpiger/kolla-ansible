@@ -12,7 +12,6 @@ supported by kolla.
    cinder-guide
    cinder-guide-hnas
    cinder-guide-quobyte
-   cinder-guide-pure
    manila-guide
    manila-hnas-guide
    swift-guide

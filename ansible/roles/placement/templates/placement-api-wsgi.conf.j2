@@ -1,7 +1,7 @@
 {% set log_dir = '/var/log/kolla/placement' %}
-{% set wsgi_directory = '/var/lib/kolla/venv/bin' %}
+{% set wsgi_directory = '/usr/bin' if placement_install_type == 'binary' else '/var/lib/kolla/venv/bin' %}
 {% if placement_enable_tls_backend | bool %}
-{% if kolla_base_distro in ['centos', 'rocky']  %}
+{% if kolla_base_distro in ['centos']  %}
 LoadModule ssl_module /usr/lib64/httpd/modules/mod_ssl.so
 {% else %}
 LoadModule ssl_module /usr/lib/apache2/modules/mod_ssl.so
@@ -12,7 +12,6 @@ Listen {{ api_interface_address | put_address_in_context('url') }}:{{ placement_
 ServerSignature Off
 ServerTokens Prod
 TraceEnable off
-TimeOut {{ kolla_httpd_timeout }}
 KeepAliveTimeout {{ kolla_httpd_keep_alive }}
 
 {% if placement_logging_debug | bool %}
@@ -20,7 +19,7 @@ LogLevel info
 {% endif %}
 
 <VirtualHost *:{{ placement_api_listen_port }}>
-    WSGIDaemonProcess placement-api processes={{ placement_api_workers }} threads=1 user=placement group=placement display-name=placement-api
+    WSGIDaemonProcess placement-api processes={{ openstack_service_workers }} threads=1 user=placement group=placement display-name=%{GROUP}
     WSGIProcessGroup placement-api
     WSGIScriptAlias / {{ wsgi_directory }}/placement-api
     WSGIApplicationGroup %{GLOBAL}

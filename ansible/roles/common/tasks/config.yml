@@ -23,6 +23,38 @@
     - paths
   when: service | service_enabled_and_mapped_to_host
 
+- name: Ensure fluentd image is present for label check
+  vars:
+    service_name: "fluentd"
+    service: "{{ common_services[service_name] }}"
+  become: true
+  kolla_docker:
+    action: "ensure_image"
+    common_options: "{{ docker_common_options }}"
+    image: "{{ service.image }}"
+  when:
+    - fluentd_version is not defined or fluentd_binary is not defined
+    - service | service_enabled_and_mapped_to_host
+
+- name: Fetch fluentd image labels
+  vars:
+    service_name: "fluentd"
+    service: "{{ common_services[service_name] }}"
+  become: true
+  docker_image_info:
+    name: "{{ service.image }}"
+  register: fluentd_labels
+  when:
+    - fluentd_version is not defined or fluentd_binary is not defined
+    - service | service_enabled_and_mapped_to_host
+
+- name: Set fluentd facts
+  set_fact:
+    fluentd_binary: "{{ fluentd_labels.images.0.ContainerConfig.Labels.fluentd_binary }}"
+  when:
+    - fluentd_binary is not defined
+    - common_services.fluentd | service_enabled_and_mapped_to_host
+
 - include_tasks: copy-certs.yml
   when:
     - kolla_copy_ca_into_containers | bool
@@ -76,36 +108,29 @@
 
 - name: Copying over td-agent.conf
   vars:
-    log_direct_to_elasticsearch: "{{ elasticsearch_address is defined }}"
-    log_direct_to_opensearch: >-
-      {{ enable_opensearch | bool or
-           ( opensearch_address != kolla_internal_fqdn ) }}
+    log_direct_to_elasticsearch: >-
+      {{ ( enable_elasticsearch | bool or
+           ( elasticsearch_address != kolla_internal_fqdn )) and
+         not enable_monasca | bool }}
+    fluentd_version: "{{ fluentd_labels.images.0.ContainerConfig.Labels.fluentd_version | default('0.12') }}"
     # Inputs
-    fluentd_input_files: "{{ default_input_files_enabled | customise_fluentd(customised_input_files) }}"
-    default_input_files_enabled: "{{ default_input_files | selectattr('enabled') | map(attribute='name') | list }}"
+    fluentd_input_files: "{{ default_input_files | customise_fluentd(customised_input_files) }}"
     default_input_files:
-      - name: "conf/input/00-global.conf.j2"
-        enabled: true
-      - name: "conf/input/01-syslog.conf.j2"
-        enabled: true
-      - name: "conf/input/02-mariadb.conf.j2"
-        enabled: true
-      - name: "conf/input/03-rabbitmq.conf.j2"
-        enabled: true
-      - name: "conf/input/04-openstack-wsgi.conf.j2"
-        enabled: true
-      - name: "conf/input/05-libvirt.conf.j2"
-        enabled: "{{ enable_nova | bool and enable_nova_libvirt_container | bool }}"
-      - name: "conf/input/08-prometheus.conf.j2"
-        enabled: "{{ enable_prometheus_fluentd_integration | bool }}"
-      - name: "conf/input/10-openvswitch.conf.j2"
-        enabled: true
+      - "conf/input/00-global.conf.j2"
+      - "conf/input/01-syslog.conf.j2"
+      - "conf/input/02-mariadb.conf.j2"
+      - "conf/input/03-rabbitmq.conf.j2"
+      - "conf/input/04-openstack-wsgi.conf.j2"
+      - "conf/input/05-libvirt.conf.j2"
+      - "conf/input/06-zookeeper.conf.j2"
+      - "conf/input/07-kafka.conf.j2"
+      - "conf/input/09-monasca.conf.j2"
     customised_input_files: "{{ find_custom_fluentd_inputs.files | map(attribute='path') | list }}"
     # Filters
     fluentd_filter_files: "{{ default_filter_files | customise_fluentd(customised_filter_files) }}"
     default_filter_files:
       - "conf/filter/00-record_transformer.conf.j2"
-      - "conf/filter/01-rewrite.conf.j2"
+      - "conf/filter/{{ '01-rewrite-0.14' if fluentd_version == '0.14' else '01-rewrite-0.12' }}.conf.j2"
       - "conf/filter/02-parser.conf.j2"
     customised_filter_files: "{{ find_custom_fluentd_filters.files | map(attribute='path') | list }}"
     # Formats
@@ -122,8 +147,8 @@
         enabled: true
       - name: "conf/output/01-es.conf.j2"
         enabled: "{{ log_direct_to_elasticsearch }}"
-      - name: "conf/output/03-opensearch.conf.j2"
-        enabled: "{{ log_direct_to_opensearch }}"
+      - name: "conf/output/02-monasca.conf.j2"
+        enabled: "{{ enable_monasca | bool }}"
     customised_output_files: "{{ find_custom_fluentd_outputs.files | map(attribute='path') | list }}"
   template:
     src: "td-agent.conf.j2"
@@ -148,11 +173,13 @@
       - { name: "barbican", enabled: "{{ enable_barbican | bool }}" }
       - { name: "blazar", enabled: "{{ enable_blazar | bool }}" }
       - { name: "ceilometer", enabled: "{{ enable_ceilometer | bool }}" }
+      - { name: "chrony", enabled: "{{ enable_chrony | bool }}" }
       - { name: "cinder", enabled: "{{ enable_cinder | bool }}" }
       - { name: "cloudkitty", enabled: "{{ enable_cloudkitty | bool }}" }
       - { name: "collectd", enabled: "{{ enable_collectd | bool }}" }
       - { name: "cyborg", enabled: "{{ enable_cyborg | bool }}" }
       - { name: "designate", enabled: "{{ enable_designate | bool }}" }
+      - { name: "elasticsearch", enabled: "{{ enable_elasticsearch | bool }}" }
       - { name: "etcd", enabled: "{{ enable_etcd | bool }}" }
       - { name: "fluentd", enabled: "{{ enable_fluentd | bool }}" }
       - { name: "freezer", enabled: "{{ enable_freezer | bool }}" }
@@ -160,43 +187,52 @@
       - { name: "glance-tls-proxy", enabled: "{{ glance_enable_tls_backend | bool }}" }
       - { name: "gnocchi", enabled: "{{ enable_gnocchi | bool }}" }
       - { name: "grafana", enabled: "{{ enable_grafana | bool }}" }
-      - { name: "hacluster", enabled: "{{ enable_hacluster | bool }}" }
       - { name: "haproxy", enabled: "{{ enable_haproxy | bool }}" }
       - { name: "heat", enabled: "{{ enable_heat | bool }}" }
       - { name: "horizon", enabled: "{{ enable_horizon | bool }}" }
       - { name: "influxdb", enabled: "{{ enable_influxdb | bool }}" }
       - { name: "ironic", enabled: "{{ enable_ironic | bool }}" }
       - { name: "ironic-inspector", enabled: "{{ enable_ironic | bool }}" }
+      - { name: "iscsid", enabled: "{{ enable_iscsid | bool }}" }
+      - { name: "kafka", enabled: "{{ enable_kafka | bool }}" }
+      - { name: "karbor", enabled: "{{ enable_karbor | bool }}" }
+      - { name: "keepalived", enabled: "{{ enable_haproxy | bool }}" }
       - { name: "keystone", enabled: "{{ enable_keystone | bool }}" }
+      - { name: "kibana", enabled: "{{ enable_kibana | bool }}" }
       - { name: "kuryr", enabled: "{{ enable_kuryr | bool }}" }
       - { name: "magnum", enabled: "{{ enable_magnum | bool }}" }
       - { name: "manila", enabled: "{{ enable_manila | bool }}" }
       - { name: "mariadb", enabled: "{{ enable_mariadb | bool }}" }
       - { name: "masakari", enabled: "{{ enable_masakari | bool }}" }
       - { name: "mistral", enabled: "{{ enable_mistral | bool }}" }
+      - { name: "monasca", enabled: "{{ enable_monasca | bool }}" }
       - { name: "murano", enabled: "{{ enable_murano | bool }}" }
       - { name: "neutron", enabled: "{{ enable_neutron | bool }}" }
       - { name: "neutron-tls-proxy", enabled: "{{ neutron_enable_tls_backend | bool }}" }
       - { name: "nova", enabled: "{{ enable_nova | bool }}" }
-      - { name: "nova-libvirt", enabled: "{{ enable_nova | bool and enable_nova_libvirt_container | bool }}" }
+      - { name: "nova-libvirt", enabled: "{{ enable_nova | bool and nova_compute_virt_type in ['kvm', 'qemu'] }}" }
       - { name: "octavia", enabled: "{{ enable_octavia | bool }}" }
-      - { name: "opensearch", enabled: "{{ enable_opensearch | bool or enable_opensearch_dashboards | bool }}" }
       - { name: "openvswitch", enabled: "{{ enable_openvswitch | bool }}" }
       - { name: "outward-rabbitmq", enabled: "{{ enable_outward_rabbitmq | bool }}" }
+      - { name: "panko", enabled: "{{ enable_panko | bool }}" }
       - { name: "placement", enabled: "{{ enable_placement | bool }}" }
       - { name: "prometheus", enabled: "{{ enable_prometheus | bool }}" }
-      - { name: "proxysql", enabled: "{{ enable_proxysql | bool }}" }
+      - { name: "qinling", enabled: "{{ enable_qinling | bool }}" }
       - { name: "rabbitmq", enabled: "{{ enable_rabbitmq | bool }}" }
+      - { name: "rally", enabled: "{{ enable_rally | bool }}" }
       - { name: "sahara", enabled: "{{ enable_sahara | bool }}" }
+      - { name: "searchlight", enabled: "{{ enable_searchlight | bool }}" }
       - { name: "senlin", enabled: "{{ enable_senlin | bool }}" }
-      - { name: "skyline", enabled: "{{ enable_skyline | bool }}" }
+      - { name: "skydive", enabled: "{{ enable_skydive | bool }}" }
       - { name: "solum", enabled: "{{ enable_solum | bool }}" }
+      - { name: "storm", enabled: "{{ enable_storm | bool }}" }
       - { name: "swift", enabled: "{{ enable_swift | bool }}" }
       - { name: "tacker", enabled: "{{ enable_tacker | bool }}" }
+      - { name: "tempest", enabled: "{{ enable_tempest | bool }}" }
       - { name: "trove", enabled: "{{ enable_trove | bool }}" }
-      - { name: "venus", enabled: "{{ enable_venus | bool }}" }
       - { name: "vitrage", enabled: "{{ enable_vitrage | bool }}" }
       - { name: "watcher", enabled: "{{ enable_watcher | bool }}" }
+      - { name: "zookeeper", enabled: "{{ enable_zookeeper | bool }}" }
       - { name: "zun", enabled: "{{ enable_zun | bool }}" }
   template:
     src: "cron-logrotate-global.conf.j2"
@@ -210,8 +246,8 @@
 
 - name: Ensure RabbitMQ Erlang cookie exists
   become: true
-  template:
-    src: "rabbitmq-erlang.cookie.j2"
+  copy:
+    content: "{{ rabbitmq_cluster_cookie }}"
     dest: "{{ node_config_directory }}/kolla-toolbox/rabbitmq-erlang.cookie"
     mode: "0660"
   when:
@@ -234,29 +270,26 @@
   with_dict: "{{ common_services }}"
 
 - name: Copy rabbitmq-env.conf to kolla toolbox
-  template:
-    src: "{{ item }}"
+  copy:
+    content: |
+      RABBITMQ_CTL_ERL_ARGS="-proto_dist inet6_tcp"
+      export ERL_INETRC=/etc/rabbitmq/erl_inetrc
     dest: "{{ node_config_directory }}/kolla-toolbox/rabbitmq-env.conf"
     mode: "0600"
-  with_first_found:
-    - "{{ node_custom_config }}/kolla-toolbox/{{ inventory_hostname }}/rabbitmq-env.conf"
-    - "{{ node_custom_config }}/kolla-toolbox/rabbitmq-env.conf"
-    - "rabbitmq-env.conf.j2"
   become: true
   when:
     - common_services['kolla-toolbox'] | service_enabled_and_mapped_to_host
     - enable_rabbitmq | bool
+    - api_address_family == "ipv6"
 
-- name: Copy rabbitmq erl_inetrc to kolla toolbox
-  template:
-    src: "{{ item }}"
+- name: Copy rabbitmq erl_intr to kolla toolbox
+  copy:
+    content: |
+      {inet6,true}.
     dest: "{{ node_config_directory }}/kolla-toolbox/erl_inetrc"
     mode: "0600"
   become: true
-  with_first_found:
-    - "{{ node_custom_config }}/kolla-toolbox/{{ inventory_hostname }}/erl_inetrc"
-    - "{{ node_custom_config }}/kolla-toolbox/erl_inetrc"
-    - "erl_inetrc.j2"
   when:
     - common_services['kolla-toolbox'] | service_enabled_and_mapped_to_host
     - enable_rabbitmq | bool
+    - api_address_family == "ipv6"

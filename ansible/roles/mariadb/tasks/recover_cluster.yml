@@ -1,18 +1,24 @@
 ---
-- name: Checking for mariadb cluster
+- name: Cheching for mariadb cluster
   fail:
     msg: "MariaDB cluster was not found. Is your inventory correct?"
   when: not mariadb_cluster_exists
 
+- name: Cleaning up temp file on mariadb hosts
+  file:
+    path: /tmp/kolla_mariadb_grastate.dat
+    state: absent
+  changed_when: false
+  check_mode: no
+
 - name: Cleaning up temp file on localhost
   file:
-    path: "{{ item }}"
+    path: /tmp/kolla_mariadb_recover_inventory_name
     state: absent
   delegate_to: localhost
   changed_when: false
   check_mode: no
   run_once: true
-  with_fileglob: "/tmp/kolla_mariadb_recover_inventory_name_*"
 
 - block:
     - name: Stop MariaDB containers
@@ -70,16 +76,16 @@
           if [[ ! -z {{ hostvars[inventory_hostname]['seqno'] }} && ! -z {{ hostvars[item]['seqno'] }} &&
           {{ hostvars[inventory_hostname]['seqno'] }} =~ ^-?[0-9]+$ && {{ hostvars[item]['seqno'] }} =~ ^-?[0-9]+$ &&
           {{ hostvars[inventory_hostname]['seqno'] }} -lt {{ hostvars[item]['seqno'] }} ]]; then echo {{ hostvars[item]['seqno'] }}; fi
-      with_items: "{{ groups[mariadb_shard_group] }}"
+      with_items: "{{ groups['mariadb'] }}"
       register: seqno_compare
       args:
         executable: /bin/bash
       changed_when: false
 
     - name: Writing hostname of host with the largest seqno to temp file
-      template:
-        src: "hostname.j2"
-        dest: "{{ mariadb_recover_tmp_file_path }}"
+      copy:
+        content: "{{ inventory_hostname }}"
+        dest: /tmp/kolla_mariadb_recover_inventory_name
         mode: 0644
       delegate_to: localhost
       changed_when: false
@@ -87,7 +93,7 @@
 
     - name: Registering mariadb_recover_inventory_name from temp file
       set_fact:
-        mariadb_recover_inventory_name: "{{ lookup('file', mariadb_recover_tmp_file_path) }}"
+        mariadb_recover_inventory_name: "{{ lookup('file', '/tmp/kolla_mariadb_recover_inventory_name') }}"
   when:
     - mariadb_recover_inventory_name is not defined
 
@@ -98,7 +104,6 @@
 - name: Set grastate.dat file from MariaDB container in bootstrap host
   become: true
   lineinfile:
-    create: yes
     dest: "{{ docker_runtime_directory or '/var/lib/docker' }}/volumes/mariadb/_data/grastate.dat"
     regexp: 'safe_to_bootstrap:(.*)$'
     line: 'safe_to_bootstrap: 1'
@@ -142,7 +147,7 @@
 
 - name: Set first MariaDB container as primary
   become: true
-  shell: "{{ kolla_container_engine }} exec {{ mariadb_service.container_name }} mysql -uroot -p{{ database_password }} -e \"SET GLOBAL wsrep_provider_options='pc.bootstrap=yes';\""
+  shell: "docker exec {{ mariadb_service.container_name }} mysql -uroot -p{{ database_password }} -e \"SET GLOBAL wsrep_provider_options='pc.bootstrap=yes';\""
   no_log: True
   when:
     - bootstrap_host is defined
@@ -151,7 +156,7 @@
 - name: Wait for MariaDB to become operational
   become: true
   command: >-
-    {{ kolla_container_engine }} exec {{ mariadb_service.container_name }}
+    docker exec {{ mariadb_service.container_name }}
     mysql -uroot -p{{ database_password }}
     --silent --skip-column-names
     -e 'SHOW STATUS LIKE "wsrep_evs_state"'
@@ -175,7 +180,6 @@
     volumes: "{{ item.value.volumes }}"
     dimensions: "{{ item.value.dimensions }}"
     environment: "{{ item.value.environment | default({}) }}"
-    healthcheck: "{{ item.value.healthcheck | default(omit) }}"
   with_dict: "{{ mariadb_services }}"
   when:
     - bootstrap_host is defined
@@ -206,7 +210,6 @@
     volumes: "{{ item.value.volumes }}"
     dimensions: "{{ item.value.dimensions }}"
     environment: "{{ item.value.environment | default({}) }}"
-    healthcheck: "{{ item.value.healthcheck | default(omit) }}"
   with_dict: "{{ mariadb_services }}"
   when:
     - bootstrap_host is defined
@@ -227,4 +230,4 @@
     - bootstrap_host is defined
     - bootstrap_host == inventory_hostname
 
-- import_tasks: check.yml
+- import_tasks: wait_for_loadbalancer.yml

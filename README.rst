@@ -1,5 +1,5 @@
 =============
-Kolla Ansible
+Kolla-Ansible
 =============
 
 .. image:: https://governance.openstack.org/tc/badges/kolla-ansible.svg
@@ -8,9 +8,9 @@ Kolla Ansible
 .. Change things from this point on
 
 
-The Kolla Ansible is a deliverable project separated from Kolla project.
+The Kolla-Ansible is a deliverable project separated from Kolla project.
 
-Kolla Ansible deploys OpenStack services and infrastructure components
+Kolla-Ansible deploys OpenStack services and infrastructure components
 in Docker containers.
 
 Kolla's mission statement is:
@@ -28,8 +28,8 @@ configuration to suit the operator's exact requirements.
 Getting Started
 ===============
 
-Learn about Kolla Ansible by reading the documentation online
-`Kolla Ansible <https://docs.openstack.org/kolla-ansible/latest/>`__.
+Learn about Kolla-Ansible by reading the documentation online
+`Kolla-Ansible <https://docs.openstack.org/kolla-ansible/latest/>`__.
 
 Get started by reading the `Developer
 Quickstart <https://docs.openstack.org/kolla-ansible/latest/user/quickstart.html>`__.
@@ -37,7 +37,7 @@ Quickstart <https://docs.openstack.org/kolla-ansible/latest/user/quickstart.html
 OpenStack services
 ------------------
 
-Kolla Ansible deploys containers for the following OpenStack projects:
+Kolla-Ansible deploys containers for the following OpenStack projects:
 
 - `Aodh <https://docs.openstack.org/aodh/latest/>`__
 - `Barbican <https://docs.openstack.org/barbican/latest/>`__
@@ -53,40 +53,46 @@ Kolla Ansible deploys containers for the following OpenStack projects:
 - `Heat <https://docs.openstack.org/heat/latest/>`__
 - `Horizon <https://docs.openstack.org/horizon/latest/>`__
 - `Ironic <https://docs.openstack.org/ironic/latest/>`__
+- `Karbor <https://docs.openstack.org/karbor/latest/>`__
 - `Keystone <https://docs.openstack.org/keystone/latest/>`__
 - `Kuryr <https://docs.openstack.org/kuryr/latest/>`__
 - `Magnum <https://docs.openstack.org/magnum/latest/>`__
 - `Manila <https://docs.openstack.org/manila/latest/>`__
 - `Masakari <https://docs.openstack.org/masakari/latest/>`__
 - `Mistral <https://docs.openstack.org/mistral/latest/>`__
+- `Monasca <https://docs.openstack.org/monasca-api/latest/>`__
 - `Murano <https://docs.openstack.org/murano/latest/>`__
 - `Neutron <https://docs.openstack.org/neutron/latest/>`__
 - `Nova <https://docs.openstack.org/nova/latest/>`__
 - `Octavia <https://docs.openstack.org/octavia/latest/>`__
+- `Panko <https://docs.openstack.org/panko/latest/>`__
+- `Qinling <https://docs.openstack.org/qinling/latest/>`__
+- `Rally <https://docs.openstack.org/rally/latest/>`__
 - `Sahara <https://docs.openstack.org/sahara/latest/>`__
+- `Searchlight <https://docs.openstack.org/searchlight/latest/>`__
 - `Senlin <https://docs.openstack.org/senlin/latest/>`__
-- Skyline (`APIServer <https://docs.openstack.org/skyline-apiserver/latest/>`__ and `Console <https://docs.openstack.org/skyline-console/latest/>`__)
 - `Solum <https://docs.openstack.org/solum/latest/>`__
 - `Swift <https://docs.openstack.org/swift/latest/>`__
 - `Tacker <https://docs.openstack.org/tacker/latest/>`__
+- `Tempest <https://docs.openstack.org/tempest/latest/>`__
 - `Trove <https://docs.openstack.org/trove/latest/>`__
-- `Venus <https://docs.openstack.org/venus/latest/>`__
 - `Vitrage <https://docs.openstack.org/vitrage/latest/>`__
+- `Vmtp <https://vmtp.readthedocs.io/en/latest/>`__
 - `Watcher <https://docs.openstack.org/watcher/latest/>`__
 - `Zun <https://docs.openstack.org/zun/latest/>`__
 
 Infrastructure components
 -------------------------
 
-Kolla Ansible deploys containers for the following infrastructure components:
+Kolla-Ansible deploys containers for the following infrastructure components:
 
 - `Collectd <https://collectd.org/>`__,
   `Telegraf <https://docs.influxdata.com/telegraf/>`__,
-  `InfluxDB <https://www.influxdata.com/products/influxdb-overview/>`__,
+  `InfluxDB <https://influxdata.com/time-series-platform/influxdb/>`__,
   `Prometheus <https://prometheus.io/>`__, and
   `Grafana <https://grafana.com/>`__ for performance monitoring.
-- `OpenSearch <https://opensearch.org/docs/latest/>`__ and
-  `OpenSearch Dashboards <https://opensearch.org/docs/latest/dashboards/index/>`__ to search, analyze,
+- `Elasticsearch <https://www.elastic.co/de/products/elasticsearch/>`__ and
+  `Kibana <https://www.elastic.co/de/products/kibana/>`__ to search, analyze,
   and visualize log messages.
 - `Etcd <https://etcd.io/>`__ a distributed reliable key-value store.
 - `Fluentd <https://www.fluentd.org/>`__ as an open source data collector
@@ -98,10 +104,12 @@ Kolla Ansible deploys containers for the following infrastructure components:
 - `MariaDB and Galera Cluster <https://mariadb.com/kb/en/mariadb/galera-cluster/>`__
   for highly available MySQL databases.
 - `Memcached <https://memcached.org/>`__ a distributed memory object caching system.
-- `Open vSwitch <https://www.openvswitch.org/>`__ for use with Neutron.
+- `Open vSwitch <https://openvswitch.org/>`__ and Linuxbridge backends for Neutron.
 - `RabbitMQ <https://www.rabbitmq.com/>`__ as a messaging backend for
   communication between services.
 - `Redis <https://redis.io/>`__ an in-memory data structure store.
+- `Zookeeper <https://zookeeper.apache.org/>`__ an open-source server which enables
+  highly reliable distributed coordination.
 
 Directories
 ===========
@@ -116,11 +124,11 @@ Directories
    a working All-in-One (AIO) deployment.
 -  ``kolla_ansible`` - Contains password generation script.
 -  ``releasenotes`` - Contains releasenote of all features added in
-   Kolla Ansible.
--  ``specs`` - Contains the Kolla Ansible communities key arguments about
+   Kolla-Ansible.
+-  ``specs`` - Contains the Kolla-Ansible communities key arguments about
    architectural shifts in the code base.
 -  ``tests`` - Contains functional testing tools.
--  ``tools`` - Contains tools for interacting with Kolla Ansible.
+-  ``tools`` - Contains tools for interacting with Kolla-Ansible.
 -  ``zuul.d`` - Contains project gate job definitions.
 
 Getting Involved
@@ -141,9 +149,9 @@ Contributors
 ============
 
 Check out who's `contributing
-code <https://stackalytics.io/?module=kolla-group&metric=commits>`__ and
+code <https://stackalytics.com/?module=kolla-group&metric=commits>`__ and
 `contributing
-reviews <https://stackalytics.io/?module=kolla-group&metric=marks>`__.
+reviews <https://stackalytics.com/?module=kolla-group&metric=marks>`__.
 
 Notices
 =======

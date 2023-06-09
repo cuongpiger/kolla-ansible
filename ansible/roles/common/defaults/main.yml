@@ -28,7 +28,6 @@ common_services:
     image: "{{ cron_image_full }}"
     environment:
       DUMMY_ENVIRONMENT: kolla_useless_env
-      KOLLA_LOGROTATE_SCHEDULE: "{{ cron_logrotate_schedule }}"
     volumes: "{{ cron_default_volumes + cron_extra_volumes }}"
     dimensions: "{{ cron_dimensions }}"
 
@@ -43,35 +42,26 @@ fluentd_elasticsearch_password: ""
 fluentd_elasticsearch_ssl_version: "TLSv1_2"
 fluentd_elasticsearch_ssl_verify: "true"
 fluentd_elasticsearch_cacert: "{{ openstack_cacert }}"
-fluentd_elasticsearch_request_timeout: "60s"
-
-fluentd_opensearch_path: ""
-fluentd_opensearch_scheme: "{{ internal_protocol }}"
-fluentd_opensearch_user: ""
-fluentd_opensearch_password: ""
-fluentd_opensearch_ssl_version: "TLSv1_2"
-fluentd_opensearch_ssl_verify: "true"
-fluentd_opensearch_cacert: "{{ openstack_cacert }}"
-fluentd_opensearch_request_timeout: "60s"
 
 ####################
 # Docker
 ####################
+common_install_type: "{{ kolla_install_type }}"
 common_tag: "{{ openstack_tag }}"
 
 cron_dimensions: "{{ default_container_dimensions }}"
 kolla_toolbox_dimensions: "{{ default_container_dimensions }}"
 fluentd_dimensions: "{{ default_container_dimensions }}"
 
-kolla_toolbox_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/kolla-toolbox"
+kolla_toolbox_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ common_install_type }}-kolla-toolbox"
 kolla_toolbox_tag: "{{ common_tag }}"
 kolla_toolbox_image_full: "{{ kolla_toolbox_image }}:{{ kolla_toolbox_tag }}"
 
-cron_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/cron"
+cron_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ common_install_type }}-cron"
 cron_tag: "{{ common_tag }}"
 cron_image_full: "{{ cron_image }}:{{ cron_tag }}"
 
-fluentd_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/fluentd"
+fluentd_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ common_install_type }}-fluentd"
 fluentd_tag: "{{ common_tag }}"
 fluentd_image_full: "{{ fluentd_image }}:{{ fluentd_tag }}"
 
@@ -89,7 +79,7 @@ syslog_facilities:
     output_tag: true
     output_time: true
   - name: "haproxy"
-    enabled: "{{ enable_haproxy | bool and inventory_hostname in groups['loadbalancer'] }}"
+    enabled: "{{ enable_haproxy | bool and inventory_hostname in groups['haproxy'] }}"
     facility: "{{ syslog_haproxy_facility }}"
     logdir: "haproxy"
     logfile: "haproxy_latest"
@@ -126,11 +116,8 @@ kolla_toolbox_extra_volumes: "{{ default_extra_volumes }}"
 cron_extra_volumes: "{{ default_extra_volumes }}"
 fluentd_extra_volumes: "{{ default_extra_volumes }}"
 
-cron_logrotate_log_maxsize: "100M"
-cron_logrotate_log_minsize: "30M"
 cron_logrotate_rotation_interval: "weekly"
 cron_logrotate_rotation_count: 6
-cron_logrotate_schedule: "daily"
 
 ####################
 # Fluentd
@@ -169,6 +156,8 @@ fluentd_input_openstack_services:
     enabled: "{{ enable_ironic | bool }}"
   - name: ironic-inspector
     enabled: "{{ enable_ironic | bool }}"
+  - name: karbor
+    enabled: "{{ enable_karbor | bool }}"
   - name: keystone
     enabled: "{{ enable_keystone | bool }}"
   - name: kuryr
@@ -181,6 +170,8 @@ fluentd_input_openstack_services:
     enabled: "{{ enable_masakari | bool }}"
   - name: mistral
     enabled: "{{ enable_mistral | bool }}"
+  - name: monasca
+    enabled: "{{ enable_monasca | bool }}"
   - name: murano
     enabled: "{{ enable_murano | bool }}"
   - name: neutron
@@ -191,8 +182,16 @@ fluentd_input_openstack_services:
     enabled: "{{ enable_nova | bool }}"
   - name: octavia
     enabled: "{{ enable_octavia | bool }}"
+  - name: panko
+    enabled: "{{ enable_panko | bool }}"
+  - name: qinling
+    enabled: "{{ enable_qinling | bool }}"
+  - name: rally
+    enabled: "{{ enable_rally | bool }}"
   - name: sahara
     enabled: "{{ enable_sahara | bool }}"
+  - name: searchlight
+    enabled: "{{ enable_searchlight | bool }}"
   - name: senlin
     enabled: "{{ enable_senlin | bool }}"
   - name: solum

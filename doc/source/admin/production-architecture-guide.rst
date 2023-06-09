@@ -54,9 +54,13 @@ In Kolla operators should configure following network interfaces:
   ``kolla_enable_tls_external`` is set to yes. Defaults to
   ``network_interface``.
 
+* ``storage_interface`` - This is the interface that is used by Swift.
+  This can be heavily utilized so it's recommended to use a high speed
+  network fabric. Defaults to ``network_interface``.
+
 * ``swift_storage_interface`` - This interface is used by Swift for storage
   access traffic.  This can be heavily utilized so it's recommended to use
-  a high speed network fabric. Defaults to ``network_interface``.
+  a high speed network fabric. Defaults to ``storage_interface``.
 
 * ``swift_replication_interface`` - This interface is used by Swift for storage
   replication traffic.  This can be heavily utilized so it's recommended to use
@@ -111,7 +115,7 @@ IPv6 is tested on all supported platforms.
 For example, ``network_address_family`` accepts either ``ipv4`` or ``ipv6``
 as its value and defines the default address family for all networks just
 like ``network_interface`` defines the default interface.
-Analogically, ``api_address_family`` changes the address family for the API
+Analogically, ``api_adress_family`` changes the address family for the API
 network. Current listing of networks is available in ``globals.yml`` file.
 
 .. note::

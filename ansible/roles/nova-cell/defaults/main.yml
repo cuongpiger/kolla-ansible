@@ -3,10 +3,9 @@ nova_cell_services:
   nova-libvirt:
     container_name: nova_libvirt
     group: "{{ nova_cell_compute_group }}"
-    enabled: "{{ enable_nova_libvirt_container }}"
+    enabled: "{{ nova_compute_virt_type in ['kvm', 'qemu'] }}"
     image: "{{ nova_libvirt_image_full }}"
     pid_mode: "host"
-    cgroupns_mode: "host"
     privileged: True
     volumes: "{{ nova_libvirt_default_volumes + nova_libvirt_extra_volumes }}"
     dimensions: "{{ nova_libvirt_dimensions }}"
@@ -34,7 +33,6 @@ nova_cell_services:
     enabled: "{{ nova_console == 'spice' }}"
     volumes: "{{ nova_spicehtml5proxy_default_volumes + nova_spicehtml5proxy_extra_volumes }}"
     dimensions: "{{ nova_spicehtml5proxy_dimensions }}"
-    healthcheck: "{{ nova_spicehtml5proxy_healthcheck }}"
   nova-serialproxy:
     container_name: "nova_serialproxy"
     group: "{{ nova_cell_serialproxy_group }}"
@@ -70,13 +68,6 @@ nova_cell_services:
     volumes: "{{ nova_compute_ironic_default_volumes + nova_compute_ironic_extra_volumes }}"
     dimensions: "{{ nova_compute_ironic_dimensions }}"
     healthcheck: "{{ nova_compute_ironic_healthcheck }}"
-
-####################
-# Config Validate
-####################
-nova_cell_config_validation:
-  - generator: "/nova/etc/nova/nova-config-generator.conf"
-    config: "/etc/nova/nova.conf"
 
 ####################
 # Ceph options
@@ -143,7 +134,7 @@ nova_cell_serialproxy_group: 'nova-serialproxy'
 ####################
 # Database
 ####################
-nova_cell_database_admin_user: "{{ nova_cell_database_shard_root_user }}"
+nova_cell_database_admin_user: "{{ database_user }}"
 nova_cell_database_admin_password: "{{ database_password }}"
 
 nova_cell_database_name: "{{ 'nova_' ~ nova_cell_name if nova_cell_name else 'nova' }}"
@@ -162,23 +153,6 @@ nova_api_database_address: "{{ database_address | put_address_in_context('url') 
 
 # Optional group for cell database. If this is not defined, then the top level database is used.
 # nova_cell_database_group:
-
-####################
-# Database sharding
-####################
-# If nova-cell is used and proxied through proxysql
-# define nova_cell_database_shard_id to shard_id
-# where cell's DB will be installed.
-#
-# If nova-cell is not used and DBs are proxied
-# through proxysql shards are same:
-#  - nova_cell_database_shard_id = nova_database_shard_id
-nova_cell_database_shard_root_user: "{% if enable_proxysql | bool %}root_shard_{{ nova_cell_database_shard_id | default(nova_database_shard_id) }}{% else %}{{ database_user }}{% endif %}"
-nova_cell_database_shard:
-  users:
-    - user: "{{ nova_cell_database_user }}"
-      password: "{{ nova_cell_database_password }}"
-  rules: "{% set rules = [] %}{% for host in groups['nova-conductor'] %}{{ rules.append({'schema': 'nova_' ~ hostvars[host]['nova_cell_name'] if hostvars[host]['nova_cell_name'] is defined else 'nova', 'shard_id': hostvars[host]['nova_cell_database_shard_id'] if (hostvars[host]['nova_cell_name'] is defined and hostvars[host]['nova_cell_database_shard_id'] is defined ) else nova_database_shard_id}) }}{% endfor %}{{ rules }}"
 
 ####################
 # RabbitMQ
@@ -221,52 +195,43 @@ nova_cell_notify_rabbitmq_users:
 ####################
 # Docker
 ####################
+nova_install_type: "{{ kolla_install_type }}"
 nova_tag: "{{ openstack_tag }}"
 
-nova_libvirt_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-libvirt"
+nova_libvirt_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ nova_install_type }}-nova-libvirt"
 nova_libvirt_tag: "{{ nova_tag }}"
 nova_libvirt_image_full: "{{ nova_libvirt_image }}:{{ nova_libvirt_tag }}"
 nova_libvirt_cpu_mode: "{{ 'host-passthrough' if ansible_facts.architecture == 'aarch64' else '' }}"
 
-nova_ssh_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-ssh"
+nova_ssh_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ nova_install_type }}-nova-ssh"
 nova_ssh_tag: "{{ nova_tag }}"
 nova_ssh_image_full: "{{ nova_ssh_image }}:{{ nova_ssh_tag }}"
 
-nova_novncproxy_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-novncproxy"
+nova_novncproxy_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ nova_install_type }}-nova-novncproxy"
 nova_novncproxy_tag: "{{ nova_tag }}"
 nova_novncproxy_image_full: "{{ nova_novncproxy_image }}:{{ nova_novncproxy_tag }}"
 
-nova_spicehtml5proxy_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-spicehtml5proxy"
+nova_spicehtml5proxy_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ nova_install_type }}-nova-spicehtml5proxy"
 nova_spicehtml5proxy_tag: "{{ nova_tag }}"
 nova_spicehtml5proxy_image_full: "{{ nova_spicehtml5proxy_image }}:{{ nova_spicehtml5proxy_tag }}"
 
-nova_serialproxy_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-serialproxy"
+nova_serialproxy_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ nova_install_type }}-nova-serialproxy"
 nova_serialproxy_tag: "{{ nova_tag }}"
 nova_serialproxy_image_full: "{{ nova_serialproxy_image }}:{{ nova_serialproxy_tag }}"
 
-nova_conductor_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-conductor"
+nova_conductor_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ nova_install_type }}-nova-conductor"
 nova_conductor_tag: "{{ nova_tag }}"
 nova_conductor_image_full: "{{ nova_conductor_image }}:{{ nova_conductor_tag }}"
 
-nova_compute_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-compute"
+nova_compute_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ nova_install_type }}-nova-compute"
 nova_compute_tag: "{{ nova_tag }}"
 nova_compute_image_full: "{{ nova_compute_image }}:{{ nova_compute_tag }}"
 
-nova_compute_ironic_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/nova-compute-ironic"
+nova_compute_ironic_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ nova_install_type }}-nova-compute-ironic"
 nova_compute_ironic_tag: "{{ nova_tag }}"
 nova_compute_ironic_image_full: "{{ nova_compute_ironic_image }}:{{ nova_compute_ironic_tag }}"
 
-nova_libvirt_default_dimensions:
-  ulimits:
-    # NOTE(yoctozepto): This limit bump is required for cgroupsv2 which use eBPF
-    # to filter devices. See also LP#1941940. The new value is said to support
-    # up to 4096 guests (see libvirtd systemd service file from Debian Bullseye
-    # libvirt-daemon-system package for details).
-    memlock:
-      soft: 67108864  # 64 MiB
-      hard: 67108864  # 64 MiB
-
-nova_libvirt_dimensions: "{{ default_container_dimensions | combine(nova_libvirt_default_dimensions, recursive=True) }}"
+nova_libvirt_dimensions: "{{ default_container_dimensions }}"
 nova_ssh_dimensions: "{{ default_container_dimensions }}"
 nova_novncproxy_dimensions: "{{ default_container_dimensions }}"
 nova_spicehtml5proxy_dimensions: "{{ default_container_dimensions }}"
@@ -305,7 +270,7 @@ nova_novncproxy_enable_healthchecks: "{{ enable_container_healthchecks }}"
 nova_novncproxy_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
 nova_novncproxy_healthcheck_retries: "{{ default_container_healthcheck_retries }}"
 nova_novncproxy_healthcheck_start_period: "{{ default_container_healthcheck_start_period }}"
-nova_novncproxy_healthcheck_test: ["CMD-SHELL", "healthcheck_curl http://{{ api_interface_address | put_address_in_context('url') }}:{{ nova_novncproxy_listen_port }}/vnc_lite.html"]
+nova_novncproxy_healthcheck_test: ["CMD-SHELL", "healthcheck_curl http://{{ api_interface_address |  put_address_in_context('url') }}:{{ nova_novncproxy_listen_port }}/vnc_auto.html"]
 nova_novncproxy_healthcheck_timeout: "{{ default_container_healthcheck_timeout }}"
 nova_novncproxy_healthcheck:
   interval: "{{ nova_novncproxy_healthcheck_interval }}"
@@ -313,19 +278,6 @@ nova_novncproxy_healthcheck:
   start_period: "{{ nova_novncproxy_healthcheck_start_period }}"
   test: "{% if nova_novncproxy_enable_healthchecks | bool %}{{ nova_novncproxy_healthcheck_test }}{% else %}NONE{% endif %}"
   timeout: "{{ nova_novncproxy_healthcheck_timeout }}"
-
-nova_spicehtml5proxy_enable_healthchecks: "{{ enable_container_healthchecks }}"
-nova_spicehtml5proxy_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
-nova_spicehtml5proxy_healthcheck_retries: "{{ default_container_healthcheck_retries }}"
-nova_spicehtml5proxy_healthcheck_start_period: "{{ default_container_healthcheck_start_period }}"
-nova_spicehtml5proxy_healthcheck_test: ["CMD-SHELL", "healthcheck_curl http://{{ api_interface_address | put_address_in_context('url') }}:{{ nova_spicehtml5proxy_listen_port }}/spice_auto.html"]
-nova_spicehtml5proxy_healthcheck_timeout: "{{ default_container_healthcheck_timeout }}"
-nova_spicehtml5proxy_healthcheck:
-  interval: "{{ nova_spicehtml5proxy_healthcheck_interval }}"
-  retries: "{{ nova_spicehtml5proxy_healthcheck_retries }}"
-  start_period: "{{ nova_spicehtml5proxy_healthcheck_start_period }}"
-  test: "{% if nova_spicehtml5proxy_enable_healthchecks | bool %}{{ nova_spicehtml5proxy_healthcheck_test }}{% else %}NONE{% endif %}"
-  timeout: "{{ nova_spicehtml5proxy_healthcheck_timeout }}"
 
 nova_conductor_enable_healthchecks: "{{ enable_container_healthchecks }}"
 nova_conductor_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
@@ -379,7 +331,6 @@ nova_libvirt_default_volumes:
   - "{{ nova_instance_datadir_volume }}:/var/lib/nova/"
   - "{% if enable_shared_var_lib_nova_mnt | bool %}/var/lib/nova/mnt:/var/lib/nova/mnt:shared{% endif %}"
   - "nova_libvirt_qemu:/etc/libvirt/qemu"
-  - "nova_libvirt_secrets:/etc/libvirt/secrets"
   - "{{ kolla_dev_repos_directory ~ '/nova/nova:/var/lib/kolla/venv/lib/python' ~ distro_python_version ~ '/site-packages/nova' if nova_dev_mode | bool else '' }}"
 nova_ssh_default_volumes:
   - "{{ node_config_directory }}/nova-ssh/:{{ container_config_directory }}/:ro"
@@ -422,7 +373,7 @@ nova_compute_default_volumes:
   - "/dev:/dev"
   - "kolla_logs:/var/log/kolla/"
   - "{% if enable_iscsid | bool %}iscsi_info:/etc/iscsi{% endif %}"
-  - "{{ nova_libvirt_volume }}:/var/lib/libvirt"
+  - "libvirtd:/var/lib/libvirt"
   - "{{ nova_instance_datadir_volume }}:/var/lib/nova/"
   - "{% if enable_shared_var_lib_nova_mnt | bool %}/var/lib/nova/mnt:/var/lib/nova/mnt:shared{% endif %}"
   - "{{ kolla_dev_repos_directory ~ '/nova/nova:/var/lib/kolla/venv/lib/python' ~ distro_python_version ~ '/site-packages/nova' if nova_dev_mode | bool else '' }}"
@@ -452,8 +403,6 @@ nova_compute_ironic_extra_volumes: "{{ nova_extra_volumes }}"
 # Used by bootstrapping containers.
 nova_cell_bootstrap_extra_volumes: "{{ nova_extra_volumes }}"
 
-nova_libvirt_volume: "{{ 'libvirtd' if enable_nova_libvirt_container | bool else '/var/lib/libvirt' }}"
-
 ####################
 # HAProxy
 ####################
@@ -469,7 +418,13 @@ nova_libvirt_logging_debug: "{{ nova_logging_debug }}"
 
 openstack_nova_auth: "{{ openstack_auth }}"
 
-nova_libvirt_port: "{{ '16514' if libvirt_tls | bool else '16509' }}"
+# Set to KOLLA_SKIP to skip setting these (even if set already - total ignore).
+# Set to KOLLA_UNSET to make Kolla unset these in the managed sysctl.conf file.
+nova_compute_host_rp_filter_mode: 0
+
+nova_safety_upgrade: "no"
+
+nova_libvirt_port: "{{'16514' if libvirt_tls | bool  else '16509'}}"
 nova_ssh_port: "8022"
 
 # NOTE(mgoddard): The order of this list defines the order in which services
@@ -513,16 +468,14 @@ nova_cell_conductor_has_api_database: "yes"
 # register itself.
 nova_compute_registration_fatal: false
 
-nova_cell_conductor_workers: "{{ openstack_service_workers }}"
-
 ####################
 # Notification
 ####################
 nova_notification_topics:
   - name: notifications
-    enabled: "{{ enable_ceilometer | bool or enable_neutron_infoblox_ipam_agent | bool }}"
-  - name: "{{ designate_notifications_topic_name }}"
-    enabled: "{{ designate_enable_notifications_sink | bool }}"
+    enabled: "{{ enable_ceilometer | bool or enable_searchlight | bool or enable_neutron_infoblox_ipam_agent | bool }}"
+  - name: notifications_designate
+    enabled: "{{ enable_designate | bool }}"
   - name: vitrage_notifications
     enabled: "{{ enable_vitrage | bool }}"
 
@@ -585,14 +538,3 @@ enable_shared_var_lib_nova_mnt: "{{ enable_cinder_backend_nfs | bool or enable_c
 ###################################
 
 nova_pci_passthrough_whitelist: "{{ enable_neutron_sriov | bool | ternary(neutron_sriov_physnet_mappings | dict2items(key_name='physical_network', value_name='devname'), []) }}"
-
-##################
-# Libvirt cleanup
-##################
-
-# The following options pertain to the kolla-ansible nova-libvirt-cleanup command.
-
-# Whether to fail when there are running VMs.
-nova_libvirt_cleanup_running_vms_fatal: true
-# Whether to remove Docker volumes.
-nova_libvirt_cleanup_remove_volumes: false

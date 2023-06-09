@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # Spawning the neutron agents containers leaves artifacts on the host.
 # This script removes these artifacts.
@@ -53,6 +53,11 @@ if [[ "$nova_instance_datadir_volume" != "nova_compute" && -d "$nova_instance_da
     rm -rfv  $nova_instance_datadir_volume
 fi
 
+if [[ "$elasticsearch_datadir_volume" != "elasticsearch" && -d "$elasticsearch_datadir_volume" ]]; then
+    echo "Removing elasticsearch volume if it is customzied"
+    rm -rfv  $elasticsearch_datadir_volume
+fi
+
 if [[ "$gnocchi_metric_datadir_volume" != "gnocchi" && -d "$gnocchi_metric_datadir_volume" ]]; then
     echo "Removing gnocchi volume if it is customzied"
     rm -rfv  $gnocchi_metric_datadir_volume
@@ -63,12 +68,12 @@ if [[ "$influxdb_datadir_volume" != "influxdb" && -d "$influxdb_datadir_volume" 
     rm -rfv  $influxdb_datadir_volume
 fi
 
-if [[ "$opensearch_datadir_volume" != "opensearch" && -d "$opensearch_datadir_volume" ]]; then
-    echo "Removing opensearch volume if it is customzied"
-    rm -rfv  $opensearch_datadir_volume
+if [[ "$kafka_datadir_volume" != "kafka" && -d "$kafka_datadir_volume" ]]; then
+    echo "Removing kafka volume if it is customised"
+    rm -rfv  $kafka_datadir_volume
 fi
 
-FOLDER_PATH="/etc/kolla"
+FOLDER_PATH="/etc/kolla/"
 
 if [[ -e "$FOLDER_PATH/ovsdpdk-db/ovs-dpdkctl.sh" ]]; then
     echo uninstalling ovs-dpdk service files and tools.
@@ -76,13 +81,12 @@ if [[ -e "$FOLDER_PATH/ovsdpdk-db/ovs-dpdkctl.sh" ]]; then
 fi
 
 echo "Getting folders name..."
-for dir in $FOLDER_PATH/*; do
-    if [ "$dir" == "$FOLDER_PATH/passwords.yml" ] || \
-       [ "$dir" == "$FOLDER_PATH/globals.yml" ] || \
-       [ "$dir" == "$FOLDER_PATH/globals.d" ] || \
-       [ "$dir" == "$FOLDER_PATH/kolla-build.conf" ] || \
-       [ "$dir" == "$FOLDER_PATH/config" ] || \
-       [ "$dir" == "$FOLDER_PATH/certificates" ]; then
+for dir in $FOLDER_PATH*; do
+    if [ "$dir" == "$FOLDER_PATH""passwords.yml" ] || \
+       [ "$dir" == "$FOLDER_PATH""globals.yml" ] || \
+       [ "$dir" == "$FOLDER_PATH""kolla-build.conf" ] || \
+       [ "$dir" == "$FOLDER_PATH""config" ] || \
+       [ "$dir" == "$FOLDER_PATH""certificates" ]; then
         echo "Skipping:" $dir
     else
         rm -rfv $dir

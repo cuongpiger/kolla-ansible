@@ -12,14 +12,18 @@ horizon_services:
       ENABLE_FREEZER: "{{ 'yes' if enable_horizon_freezer | bool else 'no' }}"
       ENABLE_HEAT: "{{ 'yes' if enable_horizon_heat | bool else 'no' }}"
       ENABLE_IRONIC: "{{ 'yes' if enable_horizon_ironic | bool else 'no' }}"
+      ENABLE_KARBOR: "{{ 'yes' if enable_horizon_karbor | bool else 'no' }}"
       ENABLE_MAGNUM: "{{ 'yes' if enable_horizon_magnum | bool else 'no' }}"
       ENABLE_MANILA: "{{ 'yes' if enable_horizon_manila | bool else 'no' }}"
       ENABLE_MASAKARI: "{{ 'yes' if enable_horizon_masakari | bool else 'no' }}"
       ENABLE_MISTRAL: "{{ 'yes' if enable_horizon_mistral | bool else 'no' }}"
-      ENABLE_MURANO: "{{ 'yes' if enable_horizon_murano | bool else 'no' }}"
+      ENABLE_MONASCA: "{{ 'yes' if enable_horizon_monasca | bool else 'no' }}"
+      ENABLE_MURANO: "{{ 'yes' if  enable_horizon_murano | bool else 'no' }}"
       ENABLE_NEUTRON_VPNAAS: "{{ 'yes' if enable_horizon_neutron_vpnaas | bool else 'no' }}"
       ENABLE_OCTAVIA: "{{ 'yes' if enable_horizon_octavia | bool else 'no' }}"
+      ENABLE_QINLING: "{{ 'yes' if enable_horizon_qinling | bool else 'no' }}"
       ENABLE_SAHARA: "{{ 'yes' if enable_horizon_sahara | bool else 'no' }}"
+      ENABLE_SEARCHLIGHT: "{{ 'yes' if enable_horizon_searchlight | bool else 'no' }}"
       ENABLE_SENLIN: "{{ 'yes' if enable_horizon_senlin | bool else 'no' }}"
       ENABLE_SOLUM: "{{ 'yes' if enable_horizon_solum | bool else 'no' }}"
       ENABLE_TACKER: "{{ 'yes' if enable_horizon_tacker | bool else 'no' }}"
@@ -36,15 +40,15 @@ horizon_services:
         enabled: "{{ enable_horizon }}"
         mode: "http"
         external: false
-        port: "{% if kolla_enable_tls_internal | bool %}{{ horizon_tls_port }}{% else %}{{ horizon_port }}{% endif %}"
+        port: "{% if kolla_enable_tls_internal|bool %}{{ horizon_tls_port }}{% else %}{{ horizon_port }}{% endif %}"
         listen_port: "{{ horizon_listen_port }}"
         frontend_http_extra:
           - "use_backend acme_client_back if { path_reg ^/.well-known/acme-challenge/.+ }"
         backend_http_extra:
-          - "balance {{ 'roundrobin' if enable_memcached | bool or horizon_backend_database | bool else 'source' }}"
+          - "balance source"
         tls_backend: "{{ horizon_enable_tls_backend }}"
       horizon_redirect:
-        enabled: "{{ enable_horizon | bool and kolla_enable_tls_internal | bool }}"
+        enabled: "{{ enable_horizon|bool and kolla_enable_tls_internal|bool }}"
         mode: "redirect"
         external: false
         port: "{{ horizon_port }}"
@@ -53,15 +57,15 @@ horizon_services:
         enabled: "{{ enable_horizon }}"
         mode: "http"
         external: true
-        port: "{% if kolla_enable_tls_external | bool %}{{ horizon_tls_port }}{% else %}{{ horizon_port }}{% endif %}"
+        port: "{% if kolla_enable_tls_external|bool %}{{ horizon_tls_port }}{% else %}{{ horizon_port }}{% endif %}"
         listen_port: "{{ horizon_listen_port }}"
         frontend_http_extra:
           - "use_backend acme_client_back if { path_reg ^/.well-known/acme-challenge/.+ }"
         backend_http_extra:
-          - "balance {{ 'roundrobin' if enable_memcached | bool or horizon_backend_database | bool else 'source' }}"
+          - "balance source"
         tls_backend: "{{ horizon_enable_tls_backend }}"
       horizon_external_redirect:
-        enabled: "{{ enable_horizon | bool and kolla_enable_tls_external | bool }}"
+        enabled: "{{ enable_horizon|bool and kolla_enable_tls_external|bool }}"
         mode: "redirect"
         external: true
         port: "{{ horizon_port }}"
@@ -74,8 +78,6 @@ horizon_services:
 horizon_keystone_domain_choices:
   Default: default
 
-horizon_custom_themes: []
-
 ####################
 # Database
 ####################
@@ -84,23 +86,10 @@ horizon_database_user: "{% if use_preconfigured_databases | bool and use_common_
 horizon_database_address: "{{ database_address | put_address_in_context('url') }}:{{ database_port }}"
 
 ####################
-# Database sharding
-####################
-horizon_database_shard_root_user: "{% if enable_proxysql | bool %}root_shard_{{ horizon_database_shard_id }}{% else %}{{ database_user }}{% endif %}"
-horizon_database_shard_id: "{{ mariadb_default_database_shard_id | int }}"
-horizon_database_shard:
-  users:
-    - user: "{{ horizon_database_user }}"
-      password: "{{ horizon_database_password }}"
-  rules:
-    - schema: "{{ horizon_database_name }}"
-      shard_id: "{{ horizon_database_shard_id }}"
-
-
-####################
 # Docker
 ####################
-horizon_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/horizon"
+horizon_install_type: "{{ kolla_install_type }}"
+horizon_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ horizon_install_type }}-horizon"
 horizon_tag: "{{ openstack_tag }}"
 horizon_image_full: "{{ horizon_image }}:{{ horizon_tag }}"
 
@@ -110,7 +99,7 @@ horizon_enable_healthchecks: "{{ enable_container_healthchecks }}"
 horizon_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
 horizon_healthcheck_retries: "{{ default_container_healthcheck_retries }}"
 horizon_healthcheck_start_period: "{{ default_container_healthcheck_start_period }}"
-horizon_healthcheck_test: ["CMD-SHELL", "healthcheck_curl {{ 'https' if horizon_enable_tls_backend | bool else 'http' }}://{{ api_interface_address | put_address_in_context('url') }}:{{ horizon_listen_port }}"]
+horizon_healthcheck_test: ["CMD-SHELL", "healthcheck_curl {{ 'https' if horizon_enable_tls_backend | bool else 'http' }}://{{ api_interface_address |  put_address_in_context('url') }}:{{ horizon_listen_port }}"]
 horizon_healthcheck_timeout: "{{ default_container_healthcheck_timeout }}"
 horizon_healthcheck:
   interval: "{{ horizon_healthcheck_interval }}"
@@ -135,7 +124,7 @@ horizon_extra_volumes: "{{ default_extra_volumes }}"
 # OpenStack
 ####################
 horizon_logging_debug: "{{ openstack_logging_debug }}"
-horizon_keystone_url: "{{ keystone_public_url if horizon_use_keystone_public_url | bool else keystone_internal_url }}"
+horizon_keystone_url: "{{ keystone_internal_url }}/v3"
 
 
 ####################
@@ -156,9 +145,3 @@ horizon_dev_mode: "{{ kolla_dev_mode }}"
 horizon_murano_dev_mode: "{{ kolla_dev_mode }}"
 horizon_source_version: "{{ kolla_source_version }}"
 horizon_murano_source_version: "{{ kolla_source_version }}"
-
-# This variable was created for administrators to define which one of the Keystone's URLs should be configured in Horizon.
-# In some cases, such as when using OIDC, horizon will need to be configured with Keystone's public URL.
-# Therefore, instead of overriding the whole "horizon_keystone_url", this change allows an easier integration because
-# the Keystone public URL is already defined with variable "keystone_public_url".
-horizon_use_keystone_public_url: False

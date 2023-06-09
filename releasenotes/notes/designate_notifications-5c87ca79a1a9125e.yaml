@@ -1,5 +1,0 @@
----
-features:
-  - |
-    Allow to disable Designate Sink service (and notifications to/from it) by
-    setting ``designate_enable_notifications_sink`` to ``no``.

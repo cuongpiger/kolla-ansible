@@ -1,9 +1,9 @@
 {
-    "command": "redis-server {{ redis_conf_path }}",
+    "command": "redis-server /etc/redis/redis.conf",
     "config_files": [
         {
             "source": "{{ container_config_directory }}/redis.conf",
-            "dest": "{{ redis_conf_path }}",
+            "dest": "/etc/redis/redis.conf",
             "owner": "redis",
             "perm": "0600"
         }

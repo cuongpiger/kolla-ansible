@@ -13,12 +13,16 @@ use_stderr = False
 
 my_ip = {{ api_interface_address }}
 
+osapi_volume_workers = {{ openstack_service_workers }}
 volume_name_template = volume-%s
 
 glance_api_servers = {{ glance_internal_endpoint }}
 
 glance_num_retries = {{ groups['glance-api'] | length }}
+glance_api_version = 2
 glance_ca_certificates_file = {{ openstack_cacert }}
+
+os_region_name = {{ openstack_region_name }}
 
 {% if cinder_enabled_backends %}
 enabled_backends = {{ cinder_enabled_backends|map(attribute='name')|join(',') }}
@@ -50,6 +54,9 @@ backup_swift_key =
 {% endif %}
 {% endif %}
 
+osapi_volume_listen = {{ api_interface_address }}
+osapi_volume_listen_port = {{ cinder_api_listen_port }}
+
 api_paste_config = /etc/cinder/api-paste.ini
 
 auth_strategy = keystone
@@ -65,14 +72,10 @@ topics = {{ cinder_enabled_notification_topics | map(attribute='name') | join(',
 driver = noop
 {% endif %}
 
-[oslo_messaging_rabbit]
-heartbeat_in_pthread = {{ service_name == 'cinder-api' }}
 {% if om_enable_rabbitmq_tls | bool %}
+[oslo_messaging_rabbit]
 ssl = true
 ssl_ca_file = {{ om_rabbitmq_cacert }}
-{% endif %}
-{% if om_enable_rabbitmq_high_availability | bool %}
-amqp_durable_queues = true
 {% endif %}
 
 [oslo_middleware]
@@ -85,7 +88,7 @@ policy_file = {{ cinder_policy_file }}
 
 [nova]
 interface = internal
-auth_url = {{ keystone_internal_url }}
+auth_url = {{ keystone_admin_url }}
 auth_type = password
 project_domain_id = {{ default_project_domain_id }}
 user_domain_id = {{ default_user_domain_id }}
@@ -102,9 +105,8 @@ max_pool_size = {{ database_max_pool_size }}
 max_retries = -1
 
 [keystone_authtoken]
-service_type = volume
 www_authenticate_uri = {{ keystone_internal_url }}
-auth_url = {{ keystone_internal_url }}
+auth_url = {{ keystone_admin_url }}
 auth_type = password
 project_domain_id = {{ default_project_domain_id }}
 user_domain_id = {{ default_user_domain_id }}
@@ -122,31 +124,36 @@ memcached_servers = {% for host in groups['memcached'] %}{{ 'api' | kolla_addres
 [oslo_concurrency]
 lock_path = /var/lib/cinder/tmp
 
+
 {% if enable_cinder_backend_lvm | bool %}
-[{{ cinder_backend_lvm_name }}]
+[lvm-1]
 volume_group = {{ cinder_volume_group }}
 volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
-volume_backend_name = {{ cinder_backend_lvm_name }}
+volume_backend_name = lvm-1
 target_helper = {{ cinder_target_helper }}
 target_protocol = iscsi
 {% endif %}
 
 {% if cinder_backend_ceph | bool %}
-[{{ cinder_backend_ceph_name }}]
+[rbd-1]
 volume_driver = cinder.volume.drivers.rbd.RBDDriver
-volume_backend_name = {{ cinder_backend_ceph_name }}
+volume_backend_name = rbd-1
 rbd_pool = {{ ceph_cinder_pool_name }}
 rbd_ceph_conf = /etc/ceph/ceph.conf
+rbd_flatten_volume_from_snapshot = false
+rbd_max_clone_depth = 5
+rbd_store_chunk_size = 4
 rados_connect_timeout = 5
 rbd_user = {{ ceph_cinder_user }}
 rbd_secret_uuid = {{ cinder_rbd_secret_uuid }}
 report_discard_supported = True
+image_upload_use_cinder_backend = True
 {% endif %}
 
 {% if enable_cinder_backend_nfs | bool %}
-[{{ cinder_backend_nfs_name }}]
+[nfs-1]
 volume_driver = cinder.volume.drivers.nfs.NfsDriver
-volume_backend_name = {{ cinder_backend_nfs_name }}
+volume_backend_name = nfs-1
 nfs_shares_config = /etc/cinder/nfs_shares
 nfs_snapshot_support = True
 nas_secure_file_permissions = False
@@ -154,7 +161,7 @@ nas_secure_file_operations = False
 {% endif %}
 
 {% if enable_cinder_backend_hnas_nfs | bool %}
-[{{ cinder_backend_hnas_nfs_name }}]
+[hnas-nfs]
 volume_driver = cinder.volume.drivers.hitachi.hnas_nfs.HNASNFSDriver
 nfs_shares_config = /home/cinder/nfs_shares
 volume_backend_name = {{ hnas_nfs_backend }}
@@ -167,7 +174,8 @@ hnas_svc0_hdp = {{ hnas_nfs_svc0_hdp }}
 {% endif %}
 
 {% if cinder_backend_vmwarevc_vmdk | bool %}
-[{{ cinder_backend_vmwarevc_vmdk_name }}]
+[vmwarevc-vmdk]
+volume_backend_name=vmwarevc-vmdk
 volume_driver = cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver
 vmware_host_ip = {{ vmware_vcenter_host_ip }}
 vmware_host_username = {{ vmware_vcenter_host_username }}
@@ -176,44 +184,10 @@ vmware_cluster_name = {{ vmware_vcenter_cluster_name }}
 vmware_insecure = True
 {% endif %}
 
-{% if cinder_backend_vmware_vstorage_object | bool %}
-[{{ cinder_backend_vmware_vstorage_object_name }}]
-volume_driver = cinder.volume.drivers.vmware.fcd.VMwareVStorageObjectDriver
-vmware_host_ip = {{ vmware_vcenter_host_ip }}
-vmware_host_username = {{ vmware_vcenter_host_username }}
-vmware_host_password = {{ vmware_vcenter_host_password }}
-vmware_cluster_name = {{ vmware_vcenter_cluster_name }}
-vmware_insecure = True
-{% endif %}
-
 {% if enable_cinder_backend_quobyte | bool %}
-[{{ cinder_backend_quobyte_name }}]
+[QuobyteHD]
 volume_driver = cinder.volume.drivers.quobyte.QuobyteDriver
 quobyte_volume_url = quobyte://{{ quobyte_storage_host }}/{{ quobyte_storage_volume }}
-{% endif %}
-
-{% if enable_cinder_backend_pure_iscsi | bool %}
-[{{ cinder_backend_pure_iscsi_name }}]
-volume_backend_name = {{ pure_iscsi_backend }}
-volume_driver = cinder.volume.drivers.pure.PureISCSIDriver
-san_ip = {{ pure_san_ip }}
-pure_api_token = {{ pure_api_token }}
-{% endif %}
-
-{% if enable_cinder_backend_pure_fc | bool %}
-[{{ cinder_backend_pure_fc_name }}]
-volume_backend_name = {{ pure_fc_backend }}
-volume_driver = cinder.volume.drivers.pure.PureFCDriver
-san_ip = {{ pure_san_ip }}
-pure_api_token = {{ pure_api_token }}
-{% endif %}
-
-{% if enable_cinder_backend_pure_roce | bool %}
-[{{ cinder_backend_pure_roce_name }}]
-volume_backend_name = {{ pure_roce_backend }}
-volume_driver = cinder.volume.drivers.pure.PureNVMEDriver
-san_ip = {{ pure_san_ip }}
-pure_api_token = {{ pure_api_token }}
 {% endif %}
 
 [privsep_entrypoint]
@@ -238,8 +212,9 @@ verify_ssl_path = {{ openstack_cacert }}
 {% if cinder_coordination_backend == 'redis' %}
 backend_url = {{ redis_connection_string }}
 {% elif cinder_coordination_backend == 'etcd' %}
+# NOTE(yoctozepto): etcd-compatible tooz drivers do not support multiple endpoints here (verified in Stein, Train)
 # NOTE(yoctozepto): we must use etcd3gw (aka etcd3+http) due to issues with alternative (etcd3) and eventlet (as used by cinder)
 # see https://bugs.launchpad.net/kolla-ansible/+bug/1854932
 # and https://review.opendev.org/466098 for details
-backend_url = etcd3+{{ internal_protocol }}://{{ kolla_internal_fqdn }}:{{ etcd_client_port }}{% if openstack_cacert %}?ca_cert={{ openstack_cacert }}{% endif %}
+backend_url = etcd3+{{ etcd_protocol }}://{{ 'api' | kolla_address(groups['etcd'][0]) | put_address_in_context('url') }}:{{ etcd_client_port }}
 {% endif %}

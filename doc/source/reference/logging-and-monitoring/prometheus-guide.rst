@@ -20,44 +20,16 @@ and change the following:
 
    enable_prometheus: "yes"
 
-Note: This will deploy Prometheus version 2.x. Any potentially existing
-Prometheus 1.x instances deployed by previous Kolla Ansible releases will
-conflict with current version and should be manually stopped and/or removed.
-If you would like to stay with version 1.x, set the ``enable_prometheus``
-variable to ``no``.
-
-In order to remove leftover volume containing Prometheus 1.x data, execute:
-
-.. code-block:: console
-
-   docker volume rm prometheus
-
-on all hosts wherever Prometheus was previously deployed.
-
 Extending the default command line options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 It is possible to extend the default command line options for Prometheus by
-using a custom variable. As an example, to set query timeout to 1 minute
-and data retention size to 30 gigabytes:
+using a custom variable. As an example, to set remote timeouts to 30 seconds
+and data retention period to 2 days:
 
 .. code-block:: yaml
 
-   prometheus_cmdline_extras: "--query.timeout=1m --storage.tsdb.retention.size=30GB"
-
-Configuration options
-~~~~~~~~~~~~~~~~~~~~~
-
-.. list-table:: Configuration options
-   :widths: 25 25 75
-   :header-rows: 1
-
-   * - Option
-     - Default
-     - Description
-   * - prometheus_scrape_interval
-     - 60s
-     - Default scrape interval for all jobs
+   prometheus_cmdline_extras: "-storage.remote.timeout 30s -storage.local.retention 48h"
 
 Extending prometheus.cfg
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -67,7 +39,7 @@ If you want to add extra targets to scrape, you can extend the default
 ``{{ node_custom_config }}/prometheus/prometheus.yml.d``. These should have the
 same format as ``prometheus.yml``. These additional configs are merged so
 that any list items are extended. For example, if using the default value for
-``node_custom_config``, you could add additional targets to scrape by defining
+``node_custom_config``, you could add additional targets to scape by defining
 ``/etc/kolla/config/prometheus/prometheus.yml.d/10-custom.yml`` containing the
 following:
 
@@ -110,49 +82,48 @@ files:
 
 - ``/etc/kolla/config/prometheus/prometheus.yml.d/ipmi-exporter.yml``:
 
-  .. code-block:: jinja
+    .. code-block:: jinja
 
-     ---
-     scrape_configs:
-     - job_name: ipmi
-       params:
-         module: ["default"]
-         scrape_interval: 1m
-         scrape_timeout: 30s
-         metrics_path: /ipmi
-         scheme: http
-         file_sd_configs:
-           - files:
-               - /etc/prometheus/extras/file_sd/ipmi-exporter-targets.yml
-         refresh_interval: 5m
-         relabel_configs:
-           - source_labels: [__address__]
-             separator: ;
-             regex: (.*)
-             target_label: __param_target
-             replacement: ${1}
-             action: replace
-           - source_labels: [__param_target]
-             separator: ;
-             regex: (.*)
-             target_label: instance
-             replacement: ${1}
-             action: replace
-           - separator: ;
-             regex: .*
-             target_label: __address__
-             replacement: "{{ ipmi_exporter_listen_address }}:9290"
-             action: replace
+        ---
+        scrape_configs:
+        - job_name: ipmi
+          params:
+            module: ["default"]
+            scrape_interval: 1m
+            scrape_timeout: 30s
+            metrics_path: /ipmi
+            scheme: http
+            file_sd_configs:
+              - files:
+                  - /etc/prometheus/extras/file_sd/ipmi-exporter-targets.yml
+            refresh_interval: 5m
+            relabel_configs:
+              - source_labels: [__address__]
+                separator: ;
+                regex: (.*)
+                target_label: __param_target
+                replacement: ${1}
+                action: replace
+              - source_labels: [__param_target]
+                separator: ;
+                regex: (.*)
+                target_label: instance
+                replacement: ${1}
+                action: replace
+              - separator: ;
+                regex: .*
+                target_label: __address__
+                replacement: "{{ ipmi_exporter_listen_address }}:9290"
+                action: replace
 
   where ``ipmi_exporter_listen_address`` is a variable containing the IP address of
   the node where the exporter is running.
 
 -  ``/etc/kolla/config/prometheus/extras/file_sd/ipmi-exporter-targets.yml``:
+    .. code-block:: yaml
 
-   .. code-block:: yaml
-
-      ---
-      - targets:
-        - 192.168.1.1
-      labels:
-          job: ipmi_exporter
+        ---
+        - targets:
+          - 192.168.1.1
+        labels:
+            job: ipmi_exporter

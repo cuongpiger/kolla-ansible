@@ -51,7 +51,7 @@ For Ubuntu 16.04 or later:
 
 .. code-block:: console
 
-   sudo apt install vagrant ruby-dev ruby-libvirt python-libvirt \
+   sudo apt-get install vagrant ruby-dev ruby-libvirt python-libvirt \
    qemu-utils qemu-kvm libvirt-dev nfs-kernel-server zlib1g-dev libpng12-dev \
    gcc git
 
@@ -246,8 +246,7 @@ Validate OpenStack is operational:
 .. code-block:: console
 
    kolla-ansible post-deploy
-   export OS_CLIENT_CONFIG_FILE=/etc/kolla/clouds.yaml
-   export OS_CLOUD=kolla-admin
+   . /etc/kolla/admin-openrc.sh
    openstack user list
 
 Or navigate to ``http://172.28.128.254/`` with a web browser.

@@ -66,19 +66,6 @@ glance_services:
         tls_backend: "yes"
 
 ####################
-# Config Validate
-####################
-glance_config_validation:
-  - generator: "/glance/etc/oslo-config-generator/glance-api.conf"
-    config: "/etc/glance/glance-api.conf"
-  - generator: "/glance/etc/oslo-config-generator/glance-cache.conf"
-    config: "/etc/glance/glance-cache.conf"
-  - generator: "/glance/etc/oslo-config-generator/glance-manage.conf"
-    config: "/etc/glance/glance-manage.conf"
-  - generator: "/glance/etc/oslo-config-generator/glance-scrubber.conf"
-    config: "/etc/glance/glance-scrubber.conf"
-
-####################
 # HAProxy
 ####################
 haproxy_members: "{% for host in glance_api_hosts %}server {{ hostvars[host].ansible_facts.hostname }} {{ 'api' | kolla_address(host) }}:{{ glance_api_listen_port }} check inter 2000 rise 2 fall 5;{% endfor %}"
@@ -92,6 +79,7 @@ glance_ks_services:
     type: "image"
     description: "Openstack Image"
     endpoints:
+      - {'interface': 'admin', 'url': '{{ glance_admin_endpoint }}'}
       - {'interface': 'internal', 'url': '{{ glance_internal_endpoint }}'}
       - {'interface': 'public', 'url': '{{ glance_public_endpoint }}'}
 
@@ -106,7 +94,7 @@ glance_ks_users:
 ####################
 glance_notification_topics:
   - name: notifications
-    enabled: "{{ enable_ceilometer | bool }}"
+    enabled: "{{ enable_ceilometer | bool or enable_searchlight | bool }}"
 
 glance_enabled_notification_topics: "{{ glance_notification_topics | selectattr('enabled', 'equalto', true) | list }}"
 
@@ -116,19 +104,6 @@ glance_enabled_notification_topics: "{{ glance_notification_topics | selectattr(
 glance_database_name: "glance"
 glance_database_user: "{% if use_preconfigured_databases | bool and use_common_mariadb_user | bool %}{{ database_user }}{% else %}glance{% endif %}"
 glance_database_address: "{{ database_address | put_address_in_context('url') }}:{{ database_port }}"
-
-####################
-# Database sharding
-####################
-glance_database_shard_root_user: "{% if enable_proxysql | bool %}root_shard_{{ glance_database_shard_id }}{% else %}{{ database_user }}{% endif %}"
-glance_database_shard_id: "{{ mariadb_default_database_shard_id | int }}"
-glance_database_shard:
-  users:
-    - user: "{{ glance_database_user }}"
-      password: "{{ glance_database_password }}"
-  rules:
-    - schema: "{{ glance_database_name }}"
-      shard_id: "{{ glance_database_shard_id }}"
 
 
 ####################
@@ -141,15 +116,15 @@ haproxy_glance_api_server_timeout: "6h"
 ####################
 # Docker
 ####################
-haproxy_tag: "{{ openstack_tag }}"
+glance_install_type: "{{ kolla_install_type }}"
 glance_tag: "{{ openstack_tag }}"
 
-glance_api_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/glance-api"
+glance_api_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ glance_install_type }}-glance-api"
 glance_api_tag: "{{ glance_tag }}"
 glance_api_image_full: "{{ glance_api_image }}:{{ glance_api_tag }}"
 
-glance_tls_proxy_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/haproxy"
-glance_tls_proxy_tag: "{{ haproxy_tag }}"
+glance_tls_proxy_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ glance_install_type }}-haproxy"
+glance_tls_proxy_tag: "{{ glance_tag }}"
 glance_tls_proxy_image_full: "{{ glance_tls_proxy_image }}:{{ glance_tls_proxy_tag }}"
 
 glance_api_dimensions: "{{ default_container_dimensions }}"
@@ -159,7 +134,7 @@ glance_api_enable_healthchecks: "{{ enable_container_healthchecks }}"
 glance_api_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
 glance_api_healthcheck_retries: "{{ default_container_healthcheck_retries }}"
 glance_api_healthcheck_start_period: "{{ default_container_healthcheck_start_period }}"
-glance_api_healthcheck_test: ["CMD-SHELL", "healthcheck_curl http://{% if glance_enable_tls_backend | bool %}localhost{% else %}{{ api_interface_address | put_address_in_context('url') }}{% endif %}:{{ glance_api_listen_port }}"]
+glance_api_healthcheck_test: ["CMD-SHELL", "healthcheck_curl http://{% if glance_enable_tls_backend | bool %}localhost{% else %}{{ api_interface_address |  put_address_in_context('url') }}{% endif %}:{{ glance_api_listen_port }}"]
 glance_api_healthcheck_timeout: "{{ default_container_healthcheck_timeout }}"
 glance_api_healthcheck:
   interval: "{{ glance_api_healthcheck_interval }}"
@@ -172,7 +147,7 @@ glance_tls_proxy_enable_healthchecks: "{{ enable_container_healthchecks }}"
 glance_tls_proxy_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
 glance_tls_proxy_healthcheck_retries: "{{ default_container_healthcheck_retries }}"
 glance_tls_proxy_healthcheck_start_period: "{{ default_container_healthcheck_start_period }}"
-glance_tls_proxy_healthcheck_test: ["CMD-SHELL", "healthcheck_curl -u {{ haproxy_user }}:{{ haproxy_password }} {{ api_interface_address | put_address_in_context('url') }}:{{ glance_tls_proxy_stats_port }}"]
+glance_tls_proxy_healthcheck_test: ["CMD-SHELL", "healthcheck_curl -u {{ haproxy_user }}:{{ haproxy_password }} {{ api_interface_address |  put_address_in_context('url') }}:{{ glance_tls_proxy_stats_port }}"]
 glance_tls_proxy_healthcheck_timeout: "{{ default_container_healthcheck_timeout }}"
 glance_tls_proxy_healthcheck:
   interval: "{{ glance_tls_proxy_healthcheck_interval }}"
@@ -226,17 +201,21 @@ glance_backends:
     type: swift
     enabled: "{{ glance_backend_swift | bool }}"
 
-glance_store_backends: "{{ glance_backends | selectattr('enabled', 'equalto', true) | list }}"
+glance_store_backends: "{{ glance_backends|selectattr('enabled', 'equalto', true)|list }}"
 
 ####################
 # OpenStack
 ####################
 
+glance_admin_endpoint: "{{ admin_protocol }}://{{ glance_internal_fqdn | put_address_in_context('url') }}:{{ glance_api_port }}"
+glance_internal_endpoint: "{{ internal_protocol }}://{{ glance_internal_fqdn | put_address_in_context('url') }}:{{ glance_api_port }}"
+glance_public_endpoint: "{{ public_protocol }}://{{ glance_external_fqdn | put_address_in_context('url') }}:{{ glance_api_port }}"
+
 glance_logging_debug: "{{ openstack_logging_debug }}"
 
-openstack_glance_auth: "{{ openstack_auth }}"
+glance_keystone_user: "glance"
 
-glance_api_workers: "{{ openstack_service_workers }}"
+openstack_glance_auth: "{{ openstack_auth }}"
 
 ###################
 # Kolla
@@ -274,7 +253,7 @@ glance_tls_proxy_http_request_timeout: "10s"
 glance_tls_proxy_http_keep_alive_timeout: "10s"
 glance_tls_proxy_queue_timeout: "1m"
 glance_tls_proxy_connect_timeout: "10s"
-glance_tls_proxy_client_timeout: "{{ haproxy_glance_api_client_timeout }}"
+glance_tls_proxy_client_timeout: "{{ haproxy_glance_api_client_timeout}}"
 glance_tls_proxy_server_timeout: "{{ haproxy_glance_api_server_timeout }}"
 glance_tls_proxy_check_timeout: "10s"
 

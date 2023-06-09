@@ -24,7 +24,7 @@ monitoring01
 # When compute nodes and control nodes use different interfaces,
 # you need to comment out "api_interface" and other interfaces from the globals.yml
 # and specify like below:
-#compute01 neutron_external_interface=eth0 api_interface=em1 tunnel_interface=em1
+#compute01 neutron_external_interface=eth0 api_interface=em1 storage_interface=em1 tunnel_interface=em1
 
 [storage]
 storage01
@@ -52,6 +52,16 @@ compute
 storage
 monitoring
 
+[chrony-server:children]
+haproxy
+
+[chrony:children]
+control
+network
+compute
+storage
+monitoring
+
 [collectd:children]
 compute
 
@@ -70,6 +80,12 @@ monitoring
 [kafka:children]
 control
 
+[karbor:children]
+control
+
+[kibana:children]
+control
+
 [telegraf:children]
 compute
 control
@@ -77,13 +93,10 @@ monitoring
 network
 storage
 
-[hacluster:children]
+[elasticsearch:children]
 control
 
-[hacluster-remote:children]
-compute
-
-[loadbalancer:children]
+[haproxy:children]
 network
 
 [mariadb:children]
@@ -93,6 +106,9 @@ control
 control
 
 [outward-rabbitmq:children]
+control
+
+[qdrouterd:children]
 control
 
 [monasca-agent:children]
@@ -161,6 +177,9 @@ control
 [magnum:children]
 control
 
+[qinling:children]
+control
+
 [sahara:children]
 control
 
@@ -180,6 +199,9 @@ control
 control
 compute
 
+[panko:children]
+control
+
 [gnocchi:children]
 control
 
@@ -189,13 +211,26 @@ control
 [trove:children]
 control
 
+# Tempest
+[tempest:children]
+control
+
 [senlin:children]
+control
+
+[vmtp:children]
 control
 
 [vitrage:children]
 control
 
 [watcher:children]
+control
+
+[rally:children]
+control
+
+[searchlight:children]
 control
 
 [octavia:children]
@@ -216,17 +251,14 @@ control
 [zun:children]
 control
 
-[skyline:children]
-control
+[skydive:children]
+monitoring
 
 [redis:children]
 control
 
 [blazar:children]
 control
-
-[venus:children]
-monitoring
 
 # Additional control implemented here. These groups allow you to control which
 # services run on which hosts at a per-service level.
@@ -248,12 +280,9 @@ common
 [kolla-toolbox:children]
 common
 
-[opensearch:children]
-control
-
-# Opensearch dashboards
-[opensearch-dashboards:children]
-opensearch
+# Elasticsearch Curator
+[elasticsearch-curator:children]
+elasticsearch
 
 # Glance
 [glance-api:children]
@@ -349,6 +378,16 @@ ironic
 [tgtd:children]
 storage
 
+# Karbor
+[karbor-api:children]
+karbor
+
+[karbor-protection:children]
+karbor
+
+[karbor-operationengine:children]
+karbor
+
 # Manila
 [manila-api:children]
 manila
@@ -415,6 +454,12 @@ monasca-agent
 [monasca-api:children]
 monasca
 
+[monasca-grafana:children]
+monasca
+
+[monasca-log-transformer:children]
+monasca
+
 [monasca-log-persister:children]
 monasca
 
@@ -447,10 +492,10 @@ ironic
 [ironic-inspector:children]
 ironic
 
-[ironic-tftp:children]
+[ironic-pxe:children]
 ironic
 
-[ironic-http:children]
+[ironic-ipxe:children]
 ironic
 
 # Magnum
@@ -459,6 +504,13 @@ magnum
 
 [magnum-conductor:children]
 magnum
+
+# Qinling
+[qinling-api:children]
+qinling
+
+[qinling-engine:children]
+qinling
 
 # Sahara
 [sahara-api:children]
@@ -535,6 +587,10 @@ compute
 [cyborg-conductor:children]
 cyborg
 
+# Panko
+[panko-api:children]
+panko
+
 # Gnocchi
 [gnocchi-api:children]
 gnocchi
@@ -582,6 +638,13 @@ senlin
 
 [senlin-health-manager:children]
 senlin
+
+# Searchlight
+[searchlight-api:children]
+searchlight
+
+[searchlight-listener:children]
+searchlight
 
 # Octavia
 [octavia-api:children]
@@ -638,12 +701,13 @@ compute
 [zun-cni-daemon:children]
 compute
 
-# Skyline
-[skyline-apiserver:children]
-skyline
+# Skydive
+[skydive-analyzer:children]
+skydive
 
-[skyline-console:children]
-skyline
+[skydive-agent:children]
+compute
+network
 
 # Tacker
 [tacker-server:children]
@@ -687,7 +751,7 @@ storage
 mariadb
 
 [prometheus-haproxy-exporter:children]
-loadbalancer
+haproxy
 
 [prometheus-memcached-exporter:children]
 memcached
@@ -706,16 +770,10 @@ monitoring
 monitoring
 
 [prometheus-elasticsearch-exporter:children]
-opensearch
+elasticsearch
 
 [prometheus-blackbox-exporter:children]
 monitoring
-
-[prometheus-libvirt-exporter:children]
-compute
-
-[prometheus-msteams:children]
-prometheus-alertmanager
 
 [masakari-api:children]
 control
@@ -723,10 +781,7 @@ control
 [masakari-engine:children]
 control
 
-[masakari-hostmonitor:children]
-control
-
-[masakari-instancemonitor:children]
+[masakari-monitors:children]
 compute
 
 [ovn-controller:children]
@@ -750,9 +805,3 @@ ovn-database
 
 [ovn-sb-db:children]
 ovn-database
-
-[venus-api:children]
-venus
-
-[venus-manager:children]
-venus

@@ -16,7 +16,7 @@ allow_resize_to_same_host = true
 # Though my_ip is not used directly, lots of other variables use $my_ip
 my_ip = {{ api_interface_address }}
 
-{% if enable_ceilometer | bool or enable_designate | bool %}
+{% if enable_ceilometer | bool or enable_searchlight | bool or enable_designate | bool %}
 instance_usage_audit = True
 instance_usage_audit_period = hour
 {% endif %}
@@ -27,10 +27,10 @@ transport_url = {{ rpc_transport_url }}
 {% if enable_blazar | bool %}
 available_filters = nova.scheduler.filters.all_filters
 available_filters = blazarnova.scheduler.filters.blazar_filter.BlazarFilter
-enabled_filters = ComputeFilter,ComputeCapabilitiesFilter,ImagePropertiesFilter,ServerGroupAntiAffinityFilter,ServerGroupAffinityFilter,BlazarFilter
+enabled_filters = AvailabilityZoneFilter,ComputeFilter,ComputeCapabilitiesFilter,ImagePropertiesFilter,ServerGroupAntiAffinityFilter,ServerGroupAffinityFilter,BlazarFilter
 {% endif %}
 {% if enable_nova_fake | bool %}
-enabled_filters = ComputeFilter,ComputeCapabilitiesFilter,ImagePropertiesFilter
+enabled_filters = AvailabilityZoneFilter,ComputeFilter,ComputeCapabilitiesFilter,ImagePropertiesFilter
 {% endif %}
 {% if enable_cells | bool %}
 # When in superconductor mode, nova-compute can't send instance
@@ -41,13 +41,9 @@ track_instance_changes = False
 [api]
 use_forwarded_for = true
 
-{% if vendordata_file_path is defined %}
-vendordata_jsonfile_path = /etc/nova/vendordata.json
-{% endif %}
-
 # Super conductor
 [conductor]
-workers = {{ nova_superconductor_workers }}
+workers = {{ openstack_service_workers }}
 
 [oslo_middleware]
 enable_proxy_headers_parsing = True
@@ -66,7 +62,7 @@ debug = {{ nova_logging_debug }}
 [cinder]
 catalog_info = volumev3:cinderv3:internalURL
 os_region_name = {{ openstack_region_name }}
-auth_url = {{ keystone_internal_url }}
+auth_url = {{ keystone_admin_url }}
 auth_type = password
 project_domain_name = {{ default_project_domain_name }}
 user_domain_id = {{ default_user_domain_id }}
@@ -79,7 +75,10 @@ cafile = {{ openstack_cacert }}
 [neutron]
 metadata_proxy_shared_secret = {{ metadata_secret }}
 service_metadata_proxy = true
-auth_url = {{ keystone_internal_url }}
+{% if neutron_plugin_agent == 'vmware_nsxv3' %}
+ovs_bridge = {{ ovs_bridge }}
+{% endif %}
+auth_url = {{ keystone_admin_url }}
 auth_type = password
 project_domain_name = {{ default_project_domain_name }}
 user_domain_id = {{ default_user_domain_id }}
@@ -110,9 +109,8 @@ memcache_servers = {% for host in groups['memcached'] %}{{ 'api' | kolla_address
 
 
 [keystone_authtoken]
-service_type = compute
 www_authenticate_uri = {{ keystone_internal_url }}
-auth_url = {{ keystone_internal_url }}
+auth_url = {{ keystone_admin_url }}
 auth_type = password
 project_domain_id = {{ default_project_domain_id }}
 user_domain_id = {{ default_user_domain_id }}
@@ -138,18 +136,14 @@ topics = {{ nova_enabled_notification_topics | map(attribute='name') | join(',')
 driver = noop
 {% endif %}
 
-[oslo_messaging_rabbit]
-heartbeat_in_pthread = {{ service_name == 'nova-api' }}
 {% if om_enable_rabbitmq_tls | bool %}
+[oslo_messaging_rabbit]
 ssl = true
 ssl_ca_file = {{ om_rabbitmq_cacert }}
 {% endif %}
-{% if om_enable_rabbitmq_high_availability | bool %}
-amqp_durable_queues = true
-{% endif %}
 
-[oslo_policy]
 {% if service_name in nova_services_require_policy_json and nova_policy_file is defined %}
+[oslo_policy]
 policy_file = {{ nova_policy_file }}
 {% endif %}
 
@@ -171,11 +165,11 @@ max_attempts = 10
 # periodic run must be disabled to avoid random failures (where both try to map)
 # -1 is default and means periodic discovery is disabled
 discover_hosts_in_cells_interval = -1
-workers = {{ nova_scheduler_workers }}
+workers = {{ openstack_service_workers }}
 
 [placement]
 auth_type = password
-auth_url = {{ keystone_internal_url }}
+auth_url = {{ keystone_admin_url }}
 username = {{ placement_keystone_user }}
 password = {{ placement_keystone_password }}
 user_domain_name = {{ default_user_domain_name }}
@@ -186,9 +180,15 @@ cafile = {{ openstack_cacert }}
 valid_interfaces = internal
 
 [notifications]
-{% if enable_ceilometer | bool or enable_designate | bool or enable_neutron_infoblox_ipam_agent | bool %}
+{% if enable_ceilometer | bool or enable_searchlight | bool or enable_designate | bool or enable_neutron_infoblox_ipam_agent | bool %}
 notify_on_state_change = vm_and_task_state
 {% endif %}
+{% if not enable_searchlight | bool %}
+notification_format = unversioned
+{% else %}
+notification_format = both
+{% endif %}
+
 
 {% if enable_osprofiler | bool %}
 [profiler]

@@ -8,7 +8,6 @@
 - name: Get container facts
   become: true
   kolla_container_facts:
-    container_engine: "{{ kolla_container_engine }}"
     name:
       - horizon
   register: container_facts

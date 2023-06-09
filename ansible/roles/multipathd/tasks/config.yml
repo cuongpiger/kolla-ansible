@@ -26,19 +26,14 @@
     - Restart multipathd container
 
 - name: Copying over multipath.conf
-  vars:
-    service: "{{ multipathd_services['multipathd'] }}"
-  become: true
   template:
-    src: "{{ item }}"
-    dest: "{{ node_config_directory }}/multipathd/multipath.conf"
+    src: "multipath.conf.j2"
+    dest: "{{ node_config_directory }}/{{ item.key }}/multipath.conf"
     mode: "0660"
-  with_first_found:
-    - "{{ node_custom_config }}/multipath/{{ inventory_hostname }}/multipath.conf"
-    - "{{ node_custom_config }}/multipath.conf"
-    - "multipath.conf.j2"
+  become: true
   when:
-    - inventory_hostname in groups[service.group]
-    - service.enabled | bool
+    - inventory_hostname in groups[item.value.group]
+    - item.value.enabled | bool
+  with_dict: "{{ multipathd_services }}"
   notify:
     - Restart multipathd container

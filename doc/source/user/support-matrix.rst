@@ -15,25 +15,10 @@ Kolla Ansible supports the following host Operating Systems (OS):
    <https://docs.openstack.org/kolla-ansible/train/user/centos8.html>`_ for
    information on migrating to CentOS 8.
 
-.. note::
-
-   CentOS Linux 8 (as opposed to CentOS Stream 8) is no longer supported as a
-   host OS. The Victoria release will in future support both CentOS Linux 8 and
-   CentOS Stream 8, and provides a route for migration.
-
-.. note::
-
-   CentOS Stream 9 is supported as a host OS while Kolla does not publish CS9
-   based images. Users can build them on their own. We recommend using Rocky
-   Linux 9 images instead.
-
-
-
-* CentOS Stream 9
-* Debian Bullseye (11)
-* openEuler 22.03 LTS
-* Rocky Linux 9
-* Ubuntu Jammy (22.04)
+* CentOS 8
+* Debian Buster (10)
+* RHEL 8
+* Ubuntu Focal (20.04)
 
 Supported container images
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,7 +28,7 @@ OS distribution. The following values are supported for ``kolla_base_distro``:
 
 * ``centos``
 * ``debian``
-* ``rocky``
+* ``rhel``
 * ``ubuntu``
 
 For details of which images are supported on which distributions, see the

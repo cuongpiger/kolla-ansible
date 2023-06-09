@@ -1,411 +1,346 @@
 ---
 - job:
-    name: kolla-ansible-centos9s
+    name: kolla-ansible-centos8s-source
     parent: kolla-ansible-base
-    nodeset: kolla-ansible-centos9s
-    voting: false
+    nodeset: kolla-ansible-centos8s
     vars:
       base_distro: centos
+      install_type: source
       tls_enabled: true
-      kolla_build_images: true
 
 - job:
-    name: kolla-ansible-debian-aarch64
-    parent: kolla-ansible-debian
-    nodeset: kolla-ansible-debian-bullseye-aarch64
+    name: kolla-ansible-debian-source-aarch64
+    parent: kolla-ansible-debian-source
+    nodeset: kolla-ansible-debian-aarch64
+    voting: false
     timeout: 10800
     required-projects:
       - openstack/kolla
 
 - job:
-    name: kolla-ansible-debian
+    name: kolla-ansible-debian-source
     parent: kolla-ansible-base
-    nodeset: kolla-ansible-debian-bullseye
+    nodeset: kolla-ansible-debian
+    voting: false
     vars:
       base_distro: debian
+      install_type: source
       tls_enabled: true
 
 - job:
-    name: kolla-ansible-openeuler
+    name: kolla-ansible-ubuntu-source
     parent: kolla-ansible-base
-    nodeset: kolla-ansible-openeuler-22.03-lts
+    nodeset: kolla-ansible-focal
+    vars:
+      base_distro: ubuntu
+      install_type: source
+      tls_enabled: true
+
+- job:
+    name: kolla-ansible-centos8s-source-kvm
+    parent: kolla-ansible-kvm-base
+    nodeset: kolla-ansible-centos8s-nested-virt
+    vars:
+      base_distro: centos
+      install_type: source
+
+- job:
+    name: kolla-ansible-ubuntu-source-kvm
+    parent: kolla-ansible-kvm-base
+    nodeset: kolla-ansible-focal-nested-virt
+    vars:
+      base_distro: ubuntu
+      install_type: source
+
+- job:
+    name: kolla-ansible-centos8s-source-multinode-ipv6
+    parent: kolla-ansible-ipv6-base
+    nodeset: kolla-ansible-centos8s-multi
+    vars:
+      base_distro: centos
+      install_type: source
+
+- job:
+    name: kolla-ansible-ubuntu-source-multinode-ipv6
+    parent: kolla-ansible-ipv6-base
+    nodeset: kolla-ansible-focal-multi
+    vars:
+      base_distro: ubuntu
+      install_type: source
+
+- job:
+    name: kolla-ansible-centos8s-binary
+    parent: kolla-ansible-base
+    nodeset: kolla-ansible-centos8s
+    voting: false
+    vars:
+      base_distro: centos
+      install_type: binary
+
+- job:
+    name: kolla-ansible-ubuntu-binary
+    parent: kolla-ansible-base
+    nodeset: kolla-ansible-focal
     voting: false
     vars:
       base_distro: ubuntu
-      tls_enabled: true
+      install_type: binary
 
 - job:
-    name: kolla-ansible-rocky9
-    parent: kolla-ansible-base
-    nodeset: kolla-ansible-rocky9
-    vars:
-      base_distro: rocky
-      tls_enabled: true
-
-- job:
-    name: kolla-ansible-ubuntu
-    parent: kolla-ansible-base
-    nodeset: kolla-ansible-jammy
-    vars:
-      base_distro: ubuntu
-      tls_enabled: true
-
-- job:
-    name: kolla-ansible-rocky9-kvm
-    parent: kolla-ansible-kvm-base
-    nodeset: kolla-ansible-rocky9-nested-virt
-    vars:
-      base_distro: rocky
-
-- job:
-    name: kolla-ansible-ubuntu-kvm
-    parent: kolla-ansible-kvm-base
-    nodeset: kolla-ansible-jammy-nested-virt
-    vars:
-      base_distro: ubuntu
-
-- job:
-    name: kolla-ansible-rocky9-multinode-ipv6
-    parent: kolla-ansible-ipv6-base
-    nodeset: kolla-ansible-rocky9-multi
-    vars:
-      base_distro: rocky
-
-- job:
-    name: kolla-ansible-ubuntu-multinode-ipv6
-    parent: kolla-ansible-ipv6-base
-    nodeset: kolla-ansible-jammy-multi
-    vars:
-      base_distro: ubuntu
-
-- job:
-    name: kolla-ansible-rocky9-cephadm
-    parent: kolla-ansible-cephadm-base
-    nodeset: kolla-ansible-rocky9-multi
+    name: kolla-ansible-centos8s-source-ceph-ansible
+    parent: kolla-ansible-ceph-ansible-base
+    nodeset: kolla-ansible-centos8s-multi
     timeout: 9000
     vars:
-      base_distro: rocky
-      cephadm_use_package_from_distribution: true
+      base_distro: centos
+      install_type: source
 
 - job:
-    name: kolla-ansible-ubuntu-cephadm
-    parent: kolla-ansible-cephadm-base
-    nodeset: kolla-ansible-jammy-multi
+    name: kolla-ansible-ubuntu-source-ceph-ansible
+    parent: kolla-ansible-ceph-ansible-base
+    nodeset: kolla-ansible-focal-multi
     timeout: 9000
     vars:
       base_distro: ubuntu
-      cephadm_use_package_from_distribution: true
+      install_type: source
 
 - job:
-    name: kolla-ansible-rocky9-mariadb
+    name: kolla-ansible-centos8s-source-mariadb
     parent: kolla-ansible-mariadb-base
-    nodeset: kolla-ansible-rocky9-multi
+    nodeset: kolla-ansible-centos8s-multi
     vars:
-      base_distro: rocky
+      base_distro: centos
+      install_type: source
 
 - job:
-    name: kolla-ansible-ubuntu-mariadb
+    name: kolla-ansible-ubuntu-source-mariadb
     parent: kolla-ansible-mariadb-base
-    nodeset: kolla-ansible-jammy-multi
+    nodeset: kolla-ansible-focal-multi
     vars:
       base_distro: ubuntu
+      install_type: source
 
 - job:
-    name: kolla-ansible-rocky9-upgrade
+    name: kolla-ansible-centos8s-source-upgrade
     parent: kolla-ansible-base
-    nodeset: kolla-ansible-rocky9
+    nodeset: kolla-ansible-centos8s
     timeout: 9000
     vars:
-      base_distro: rocky
+      base_distro: centos
+      install_type: source
       is_upgrade: yes
-      tls_enabled: true
 
 - job:
-    name: kolla-ansible-debian-upgrade
+    name: kolla-ansible-debian-source-upgrade
     parent: kolla-ansible-base
-    nodeset: kolla-ansible-debian-bullseye
+    nodeset: kolla-ansible-debian
     timeout: 9000
+    voting: false
     vars:
       base_distro: debian
+      install_type: source
       is_upgrade: yes
-      tls_enabled: true
 
 - job:
-    name: kolla-ansible-debian-upgrade-aarch64
-    parent: kolla-ansible-debian-upgrade
-    nodeset: kolla-ansible-debian-bullseye-aarch64
+    name: kolla-ansible-debian-source-upgrade-aarch64
+    parent: kolla-ansible-debian-source-upgrade
+    nodeset: kolla-ansible-debian-aarch64
 
 - job:
-    name: kolla-ansible-ubuntu-upgrade
+    name: kolla-ansible-ubuntu-source-upgrade
     parent: kolla-ansible-base
-    nodeset: kolla-ansible-jammy
+    nodeset: kolla-ansible-bionic
     timeout: 9000
     vars:
       base_distro: ubuntu
+      install_type: source
       is_upgrade: yes
-      tls_enabled: true
 
 - job:
-    name: kolla-ansible-rocky9-upgrade-cephadm
-    parent: kolla-ansible-cephadm-base
-    nodeset: kolla-ansible-rocky9-multi
+    name: kolla-ansible-centos8s-source-upgrade-ceph-ansible
+    parent: kolla-ansible-ceph-ansible-base
+    nodeset: kolla-ansible-centos8s-multi
     timeout: 9000
     vars:
-      base_distro: rocky
+      base_distro: centos
+      install_type: source
       is_upgrade: yes
 
 - job:
-    name: kolla-ansible-ubuntu-upgrade-cephadm
-    parent: kolla-ansible-cephadm-base
-    nodeset: kolla-ansible-jammy-multi
-    timeout: 9000
-    vars:
-      base_distro: ubuntu
-      is_upgrade: yes
-      cephadm_use_package_from_distribution: true
-
-- job:
-    name: kolla-ansible-rocky9-upgrade-ovn
-    parent: kolla-ansible-ovn-base
-    nodeset: kolla-ansible-rocky9-multi
-    timeout: 9000
-    vars:
-      base_distro: rocky
-      is_upgrade: yes
-
-- job:
-    name: kolla-ansible-ubuntu-upgrade-ovn
-    parent: kolla-ansible-ovn-base
-    nodeset: kolla-ansible-jammy-multi
+    name: kolla-ansible-ubuntu-source-upgrade-ceph-ansible
+    parent: kolla-ansible-ceph-ansible-base
+    nodeset: kolla-ansible-bionic-multi
     timeout: 9000
     vars:
       base_distro: ubuntu
+      install_type: source
       is_upgrade: yes
 
 - job:
-    name: kolla-ansible-rocky9-bifrost
+    name: kolla-ansible-centos8s-source-bifrost
     parent: kolla-ansible-bifrost-base
-    nodeset: kolla-ansible-rocky9
+    nodeset: kolla-ansible-centos8s
     vars:
-      base_distro: rocky
+      base_distro: centos
 
 - job:
-    name: kolla-ansible-ubuntu-bifrost
-    parent: kolla-ansible-bifrost-base
-    nodeset: kolla-ansible-jammy
-    vars:
-      base_distro: ubuntu
-
-- job:
-    name: kolla-ansible-rocky9-zun
+    name: kolla-ansible-centos8s-source-zun
     parent: kolla-ansible-zun-base
-    nodeset: kolla-ansible-rocky9-multi
+    nodeset: kolla-ansible-centos8s-multi
     vars:
-      base_distro: rocky
+      base_distro: centos
+      install_type: source
 
 - job:
-    name: kolla-ansible-debian-zun
+    name: kolla-ansible-ubuntu-source-zun
     parent: kolla-ansible-zun-base
-    nodeset: kolla-ansible-debian-bullseye-multi
-    vars:
-      base_distro: debian
-
-- job:
-    name: kolla-ansible-ubuntu-zun
-    parent: kolla-ansible-zun-base
-    nodeset: kolla-ansible-jammy-multi
+    nodeset: kolla-ansible-focal-multi
     vars:
       base_distro: ubuntu
+      install_type: source
 
 - job:
-    name: kolla-ansible-rocky9-swift
+    name: kolla-ansible-centos8s-source-swift
     parent: kolla-ansible-swift-base
-    nodeset: kolla-ansible-rocky9-multi
+    nodeset: kolla-ansible-centos8s-multi
     vars:
-      base_distro: rocky
-      # NOTE(yoctozepto): We need this here because we initialise Swift outside
-      # of Kolla Ansible and need to know the version of images.
-      base_distro_version: 9
+      base_distro: centos
+      install_type: source
 
 - job:
-    name: kolla-ansible-ubuntu-swift
+    name: kolla-ansible-ubuntu-source-swift
     parent: kolla-ansible-swift-base
-    nodeset: kolla-ansible-jammy-multi
-    vars:
-      base_distro: ubuntu
-      # NOTE(yoctozepto): We need this here because we initialise Swift outside
-      # of Kolla Ansible and need to know the version of images.
-      base_distro_version: jammy
-
-- job:
-    name: kolla-ansible-rocky9-swift-upgrade
-    parent: kolla-ansible-swift-base
-    nodeset: kolla-ansible-rocky9-multi
-    timeout: 10800
-    vars:
-      base_distro: rocky
-      # NOTE(yoctozepto): We need this here because we initialise Swift outside
-      # of Kolla Ansible and need to know the version of images.
-      base_distro_version: 9
-      is_upgrade: yes
-
-- job:
-    name: kolla-ansible-ubuntu-swift-upgrade
-    parent: kolla-ansible-swift-base
-    nodeset: kolla-ansible-jammy-multi
-    timeout: 10800
+    nodeset: kolla-ansible-focal-multi
     vars:
       base_distro: ubuntu
-      # NOTE(yoctozepto): We need this here because we initialise Swift outside
-      # of Kolla Ansible and need to know the version of images.
-      base_distro_version: jammy
-      is_upgrade: yes
+      install_type: source
 
 - job:
-    name: kolla-ansible-rocky9-scenario-nfv
+    name: kolla-ansible-centos8s-source-scenario-nfv
     parent: kolla-ansible-scenario-nfv-base
-    nodeset: kolla-ansible-rocky9-multi
+    nodeset: kolla-ansible-centos8s-multi
     vars:
-      base_distro: rocky
+      base_distro: centos
+      install_type: source
 
 - job:
-    name: kolla-ansible-rocky9-ironic
+    name: kolla-ansible-centos8s-source-ironic
     parent: kolla-ansible-ironic-base
-    nodeset: kolla-ansible-rocky9
+    nodeset: kolla-ansible-centos8s
     vars:
-      base_distro: rocky
+      base_distro: centos
+      install_type: source
 
 - job:
-    name: kolla-ansible-debian-ironic
+    name: kolla-ansible-centos8s-binary-ironic
     parent: kolla-ansible-ironic-base
-    nodeset: kolla-ansible-debian-bullseye
+    nodeset: kolla-ansible-centos8s
     vars:
-      base_distro: debian
+      base_distro: centos
+      install_type: binary
 
 - job:
-    name: kolla-ansible-ubuntu-ironic
+    name: kolla-ansible-ubuntu-source-ironic
     parent: kolla-ansible-ironic-base
-    nodeset: kolla-ansible-jammy
+    nodeset: kolla-ansible-focal
     vars:
       base_distro: ubuntu
+      install_type: source
+
+# Not running this job because the ironic-neutron-agent image is not available
+# for Ubuntu binary.
+- job:
+    name: kolla-ansible-ubuntu-binary-ironic
+    parent: kolla-ansible-ironic-base
+    nodeset: kolla-ansible-focal
+    vars:
+      base_distro: ubuntu
+      install_type: binary
 
 - job:
-    name: kolla-ansible-rocky9-magnum
+    name: kolla-ansible-centos8s-source-magnum
     parent: kolla-ansible-magnum-base
-    nodeset: kolla-ansible-rocky9
+    nodeset: kolla-ansible-centos8s
     vars:
-      base_distro: rocky
+      base_distro: centos
+      install_type: source
 
 - job:
-    name: kolla-ansible-ubuntu-magnum
+    name: kolla-ansible-ubuntu-source-magnum
     parent: kolla-ansible-magnum-base
-    nodeset: kolla-ansible-jammy
+    nodeset: kolla-ansible-focal
     vars:
       base_distro: ubuntu
+      install_type: source
 
 - job:
-    name: kolla-ansible-rocky9-octavia
-    parent: kolla-ansible-octavia-base
-    nodeset: kolla-ansible-rocky9
-    vars:
-      base_distro: rocky
-
-- job:
-    name: kolla-ansible-ubuntu-octavia
-    parent: kolla-ansible-octavia-base
-    nodeset: kolla-ansible-jammy
-    vars:
-      base_distro: ubuntu
-
-- job:
-    name: kolla-ansible-ubuntu-masakari
+    name: kolla-ansible-ubuntu-source-masakari
     parent: kolla-ansible-masakari-base
-    nodeset: kolla-ansible-jammy-masakari
+    nodeset: kolla-ansible-focal
     vars:
       base_distro: ubuntu
+      install_type: source
 
 - job:
-    name: kolla-ansible-rocky9-masakari
+    name: kolla-ansible-centos8s-source-masakari
     parent: kolla-ansible-masakari-base
-    nodeset: kolla-ansible-rocky9-masakari
+    nodeset: kolla-ansible-centos8s
     vars:
-      base_distro: rocky
+      base_distro: centos
+      install_type: source
 
 - job:
-    name: kolla-ansible-ubuntu-cells
+    name: kolla-ansible-centos8s-source-cells
     parent: kolla-ansible-cells-base
-    nodeset: kolla-ansible-jammy-multi
+    nodeset: kolla-ansible-centos8s-multi
+    vars:
+      base_distro: centos
+      install_type: source
+
+- job:
+    name: kolla-ansible-ubuntu-source-linuxbridge
+    parent: kolla-ansible-linuxbridge-base
+    nodeset: kolla-ansible-focal
     vars:
       base_distro: ubuntu
+      install_type: source
 
 - job:
-    name: kolla-ansible-rocky9-cells
-    parent: kolla-ansible-cells-base
-    nodeset: kolla-ansible-rocky9-multi
+    name: kolla-ansible-centos8s-source-linuxbridge
+    parent: kolla-ansible-linuxbridge-base
+    nodeset: kolla-ansible-centos8s
     vars:
-      base_distro: rocky
+      base_distro: centos
+      install_type: source
 
 - job:
-    name: kolla-ansible-rocky9-ovn
+    name: kolla-ansible-centos8s-source-ovn
     parent: kolla-ansible-ovn-base
-    nodeset: kolla-ansible-rocky9-multi
+    nodeset: kolla-ansible-centos8s-multi
     vars:
-      base_distro: rocky
+      base_distro: centos
+      install_type: source
 
 - job:
-    name: kolla-ansible-ubuntu-ovn
+    name: kolla-ansible-ubuntu-source-ovn
     parent: kolla-ansible-ovn-base
-    nodeset: kolla-ansible-jammy-multi
+    nodeset: kolla-ansible-focal-multi
     vars:
       base_distro: ubuntu
+      install_type: source
 
 - job:
-    name: kolla-ansible-rocky9-prometheus-opensearch
-    parent: kolla-ansible-prometheus-opensearch-base
-    nodeset: kolla-ansible-rocky9
+    name: kolla-ansible-centos8s-source-prometheus-efk
+    parent: kolla-ansible-prometheus-efk-base
+    nodeset: kolla-ansible-centos8s
     vars:
-      base_distro: rocky
+      base_distro: centos
+      install_type: source
 
 - job:
-    name: kolla-ansible-ubuntu-prometheus-opensearch
-    parent: kolla-ansible-prometheus-opensearch-base
-    nodeset: kolla-ansible-jammy
-    vars:
-      base_distro: ubuntu
-
-- job:
-    name: kolla-ansible-rocky9-prometheus-opensearch-upgrade
-    parent: kolla-ansible-prometheus-opensearch-base
-    nodeset: kolla-ansible-rocky9
-    vars:
-      base_distro: rocky
-      is_upgrade: yes
-
-- job:
-    name: kolla-ansible-ubuntu-prometheus-opensearch-upgrade
-    parent: kolla-ansible-prometheus-opensearch-base
-    nodeset: kolla-ansible-jammy
+    name: kolla-ansible-ubuntu-source-prometheus-efk
+    parent: kolla-ansible-prometheus-efk-base
+    nodeset: kolla-ansible-focal
     vars:
       base_distro: ubuntu
-      is_upgrade: yes
-
-- job:
-    name: kolla-ansible-rocky9-venus
-    parent: kolla-ansible-venus-base
-    nodeset: kolla-ansible-rocky9
-    vars:
-      base_distro: rocky
-
-- job:
-    name: kolla-ansible-ubuntu-venus
-    parent: kolla-ansible-venus-base
-    nodeset: kolla-ansible-jammy
-    vars:
-      base_distro: ubuntu
-
-- job:
-    name: kolla-ansible-rocky9-hashi-vault
-    parent: kolla-ansible-hashi-vault-base
-    nodeset: kolla-ansible-rocky9
-    vars:
-      base_distro: rocky
+      install_type: source

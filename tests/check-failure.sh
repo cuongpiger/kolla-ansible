@@ -23,11 +23,11 @@ check_failure() {
     unhealthy_containers=$(sudo docker ps -a --format "{{.Names}}" \
         --filter health=unhealthy)
 
-    if [[ -n "$unhealthy_containers" ]]; then
+    if [[ -n "$failed_containers" ]]; then
         exit 1;
     fi
 
-    if [[ -n "$failed_containers" ]]; then
+    if [[ -n "$unhealthy_containers" ]]; then
         exit 1;
     fi
 }

@@ -12,3 +12,5 @@
 
 - name: Flush handlers
   meta: flush_handlers
+
+- import_tasks: check.yml

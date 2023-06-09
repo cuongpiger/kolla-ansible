@@ -27,27 +27,13 @@ masakari_services:
     dimensions: "{{ masakari_engine_dimensions }}"
   masakari-instancemonitor:
     container_name: masakari_instancemonitor
-    group: masakari-instancemonitor
-    enabled: "{{ enable_masakari_instancemonitor | bool }}"
+    group: masakari-monitors
+    enabled: true
     image: "{{ masakari_monitors_image_full }}"
     volumes: "{{ masakari_instancemonitor_default_volumes + masakari_instancemonitor_extra_volumes }}"
     privileged: True
     dimensions: "{{ masakari_instancemonitor_dimensions }}"
-  masakari-hostmonitor:
-    container_name: masakari_hostmonitor
-    group: masakari-hostmonitor
-    enabled: "{{ enable_masakari_hostmonitor | bool }}"
-    ipc_mode: host
-    image: "{{ masakari_monitors_image_full }}"
-    volumes: "{{ masakari_hostmonitor_default_volumes + masakari_hostmonitor_extra_volumes }}"
-    dimensions: "{{ masakari_hostmonitor_dimensions }}"
 
-####################
-# Config Validate
-####################
-masakari_config_validation:
-  - generator: "/masakari/etc/masakari/masakari-config-generator.conf"
-    config: "/etc/masakari/masakari.conf"
 
 ####################
 # Database
@@ -57,33 +43,20 @@ masakari_database_user: "{% if use_preconfigured_databases | bool and use_common
 masakari_database_address: "{{ database_address | put_address_in_context('url') }}:{{ database_port }}"
 
 ####################
-# Database sharding
-####################
-masakari_database_shard_root_user: "{% if enable_proxysql | bool %}root_shard_{{ masakari_database_shard_id }}{% else %}{{ database_user }}{% endif %}"
-masakari_database_shard_id: "{{ mariadb_default_database_shard_id | int }}"
-masakari_database_shard:
-  users:
-    - user: "{{ masakari_database_user }}"
-      password: "{{ masakari_database_password }}"
-  rules:
-    - schema: "{{ masakari_database_name }}"
-      shard_id: "{{ masakari_database_shard_id }}"
-
-
-####################
 # Docker
 ####################
+masakari_install_type: "{{ kolla_install_type }}"
 masakari_tag: "{{ openstack_tag }}"
 
-masakari_api_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/masakari-api"
+masakari_api_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ masakari_install_type }}-masakari-api"
 masakari_api_tag: "{{ masakari_tag }}"
 masakari_api_image_full: "{{ masakari_api_image }}:{{ masakari_api_tag }}"
 
-masakari_engine_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/masakari-engine"
+masakari_engine_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ masakari_install_type }}-masakari-engine"
 masakari_engine_tag: "{{ masakari_tag }}"
 masakari_engine_image_full: "{{ masakari_engine_image }}:{{ masakari_engine_tag }}"
 
-masakari_monitors_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/masakari-monitors"
+masakari_monitors_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ masakari_install_type }}-masakari-monitors"
 masakari_monitors_tag: "{{ masakari_tag }}"
 masakari_monitors_image_full: "{{ masakari_monitors_image }}:{{ masakari_monitors_tag }}"
 
@@ -92,13 +65,11 @@ masakari_engine_dimensions: "{{ default_container_dimensions }}"
 # NOTE(mgoddard): Allow masakari_monitors_dimensions for backwards
 # compatibility.
 masakari_instancemonitor_dimensions: "{{ masakari_monitors_dimensions | default(default_container_dimensions) }}"
-masakari_hostmonitor_dimensions: "{{ default_container_dimensions }}"
 
 masakari_extra_volumes: "{{ default_extra_volumes }}"
 masakari_api_extra_volumes: "{{ masakari_extra_volumes }}"
 masakari_engine_extra_volumes: "{{ masakari_extra_volumes }}"
 masakari_instancemonitor_extra_volumes: "{{ masakari_extra_volumes }}"
-masakari_hostmonitor_extra_volumes: "{{ masakari_extra_volumes }}"
 
 masakari_api_default_volumes:
   - "{{ node_config_directory }}/masakari-api/:{{ container_config_directory }}/:ro"
@@ -119,17 +90,12 @@ masakari_instancemonitor_default_volumes:
   - "{{ '/etc/timezone:/etc/timezone:ro' if ansible_facts.os_family == 'Debian' else '' }}"
   - "kolla_logs:/var/log/kolla/"
   - "{{ kolla_dev_repos_directory ~ '/masakari-monitors/masakarimonitors:/var/lib/kolla/venv/lib/python' ~ distro_python_version ~ '/site-packages/masakarimonitors' if masakari_dev_mode | bool else '' }}"
-masakari_hostmonitor_default_volumes:
-  - "{{ node_config_directory }}/masakari-hostmonitor/:{{ container_config_directory }}/:ro"
-  - "/etc/localtime:/etc/localtime:ro"
-  - "{{ '/etc/timezone:/etc/timezone:ro' if ansible_facts.os_family == 'Debian' else '' }}"
-  - "kolla_logs:/var/log/kolla/"
-  - "{{ kolla_dev_repos_directory ~ '/masakari-monitors/masakarimonitors:/var/lib/kolla/venv/lib/python' ~ distro_python_version ~ '/site-packages/masakarimonitors' if masakari_dev_mode | bool else '' }}"
 
 
 ####################
 # OpenStack
 ####################
+masakari_admin_endpoint: "{{ admin_protocol }}://{{ kolla_internal_fqdn | put_address_in_context('url') }}:{{ masakari_api_port }}"
 masakari_internal_endpoint: "{{ internal_protocol }}://{{ kolla_internal_fqdn | put_address_in_context('url') }}:{{ masakari_api_port }}"
 masakari_public_endpoint: "{{ public_protocol }}://{{ kolla_external_fqdn | put_address_in_context('url') }}:{{ masakari_api_port }}"
 
@@ -139,7 +105,6 @@ masakari_keystone_user: "masakari"
 
 openstack_masakari_auth: "{{ openstack_auth }}"
 
-masakari_api_workers: "{{ openstack_service_workers }}"
 
 ####################
 # Kolla
@@ -162,6 +127,7 @@ masakari_ks_services:
     type: "instance-ha"
     description: "OpenStack High Availability"
     endpoints:
+      - {'interface': 'admin', 'url': '{{ masakari_admin_endpoint }}'}
       - {'interface': 'internal', 'url': '{{ masakari_internal_endpoint }}'}
       - {'interface': 'public', 'url': '{{ masakari_public_endpoint }}'}
 

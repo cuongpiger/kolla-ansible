@@ -8,8 +8,9 @@ Kolla Ansible does not provide support for provisioning and configuring a
 Ceph cluster directly. Instead, administrators should use a tool dedicated
 to this purpose, such as:
 
-* `ceph-ansible <https://docs.ceph.com/projects/ceph-ansible/en/latest/>`_
-* `cephadm <https://docs.ceph.com/en/latest/cephadm/install/>`_
+* `ceph-ansible <https://docs.ceph.com/ceph-ansible>`_
+* `ceph-deploy <https://docs.ceph.com/docs/master/start/>`_
+* `cephadm <https://docs.ceph.com/docs/master/bootstrap/>`_
 
 The desired pool(s) and keyrings should then be created via the Ceph CLI
 or similar.
@@ -22,21 +23,13 @@ Requirements
 * Existing credentials in Ceph for OpenStack services to connect to Ceph
   (Glance, Cinder, Nova, Gnocchi, Manila)
 
-Refer to https://docs.ceph.com/en/latest/rbd/rbd-openstack/ for details on
+Refer to http://docs.ceph.com/docs/master/rbd/rbd-openstack/ for details on
 creating the pool and keyrings with appropriate permissions for each service.
 
 Configuring External Ceph
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Ceph integration is configured for different OpenStack services independently.
-
-.. note::
-
-    Commands like ``ceph config generate-minimal-conf`` generate configuration
-    files that have leading tabs. These tabs break Kolla Ansible's ini parser.
-    Be sure to remove the leading tabs from your ``ceph.conf`` files when
-    copying them in the following sections.
-
 
 Glance
 ------
@@ -70,20 +63,6 @@ for Ceph includes the following steps:
       auth_client_required = cephx
 
 #. Copy Ceph keyring to ``/etc/kolla/config/glance/<ceph_glance_keyring>``
-
-#. For copy-on-write set following in ``/etc/kolla/config/glance.conf``:
-
-   .. path /etc/kolla/config/glance.conf
-   .. code-block:: ini
-
-      [GLOBAL]
-      show_image_direct_url = True
-
-.. warning::
-
-    ``show_image_direct_url`` can present a security risk if using more
-    than just Ceph as Glance backend(s). Please see
-    :glance-doc:`Glance show_image_direct_url <configuration/glance_api.html#DEFAULT.show_image_direct_url>`
 
 Cinder
 ------
@@ -145,23 +124,6 @@ Nova must also be configured to allow access to Cinder volumes:
 #. Copy Ceph keyring file(s) to:
 
    * ``/etc/kolla/config/nova/<ceph_cinder_keyring>``
-
-If ``zun`` is enabled, and you wish to use cinder volumes with zun,
-it must also be configured to allow access to Cinder volumes:
-
-#. Enable Cinder Ceph backend for Zun in ``globals.yml``:
-
-   .. code-block:: yaml
-
-      zun_configure_for_cinder_ceph: "yes"
-
-#. Copy Ceph configuration file to:
-   * ``/etc/kolla/config/zun/zun-compute/ceph.conf``
-
-#. Copy Ceph keyring file(s) to:
-
-   * ``/etc/kolla/config/zun/zun-compute/<ceph_cinder_keyring>``
-
 
 Nova
 ----
@@ -243,13 +205,6 @@ for Ceph includes following steps:
 
 #. Copy Ceph configuration file to ``/etc/kolla/config/manila/ceph.conf``
 #. Copy Ceph keyring to ``/etc/kolla/config/manila/<ceph_manila_keyring>``
-
-#. If using multiple filesystems (Ceph Pacific+), set
-   ``manila_cephfs_filesystem_name`` in ``/etc/kolla/globals.yml`` to the
-   name of the Ceph filesystem Manila should use.
-   By default, Manila will use the first filesystem returned by
-   the ``ceph fs volume ls`` command.
-
 #. Setup Manila in the usual way
 
 For more details on the rest of the Manila setup, such as creating the share
@@ -257,84 +212,3 @@ type ``default_share_type``, please see :doc:`Manila in Kolla <manila-guide>`.
 
 For more details on the CephFS Native driver, please see
 :manila-doc:`CephFS Native driver <admin/cephfs_driver.html>`.
-
-RadosGW
--------
-
-As of the Xena 13.0.0 release, Kolla Ansible supports integration with Ceph
-RadosGW. This includes:
-
-* Registration of Swift-compatible endpoints in Keystone
-* Load balancing across RadosGW API servers using HAProxy
-
-See the `Ceph documentation
-<https://docs.ceph.com/en/latest/radosgw/keystone/>`__ for further information,
-including changes that must be applied to the Ceph cluster configuration.
-
-Enable Ceph RadosGW integration:
-
-.. code-block:: yaml
-
-   enable_ceph_rgw: true
-
-Keystone integration
-====================
-
-A Keystone user and endpoints are registered by default, however this may be
-avoided by setting ``enable_ceph_rgw_keystone`` to ``false``. If registration
-is enabled, the username is defined via ``ceph_rgw_keystone_user``, and this
-defaults to ``ceph_rgw``. The hostnames used by the endpoints default to
-``ceph_rgw_external_fqdn`` and ``ceph_rgw_internal_fqdn`` for the public and
-internal endpoints respectively. These default to ``kolla_external_fqdn`` and
-``kolla_internal_fqdn`` respectively. The port used by the endpoints is defined
-via ``ceph_rgw_port``, and defaults to 6780.
-
-By default RadosGW supports both Swift and S3 API, and it is not completely
-compatible with Swift API. The option ``ceph_rgw_swift_compatibility`` can
-enable/disable complete RadosGW compatibility with Swift API.  This should
-match the configuration used by Ceph RadosGW. After changing the value, run
-the ``kolla-ansible deploy`` command to enable.
-
-By default, the RadosGW endpoint URL does not include the project (account) ID.
-This prevents cross-project and public object access. This can be resolved by
-setting ``ceph_rgw_swift_account_in_url`` to ``true``. This should match the
-``rgw_swift_account_in_url`` configuration option in Ceph RadosGW.
-
-Load balancing
-==============
-
-.. warning::
-
-   Users of Ceph RadosGW can generate very high volumes of traffic. It is
-   advisable to use a separate load balancer for RadosGW for anything other
-   than small or lightly utilised RadosGW deployments, however this is
-   currently out of scope for Kolla Ansible.
-
-Load balancing is enabled by default, however this may be avoided by setting
-``enable_ceph_rgw_loadbalancer`` to ``false``. If using load balancing, the
-RadosGW hosts and ports must be configured. Each item should contain
-``host`` and ``port`` keys. The ``ip`` and ``port`` keys are optional. If
-``ip`` is not specified, the ``host`` values should be resolvable from the host
-running HAProxy. If the ``port`` is not specified, the default HTTP (80) or
-HTTPS (443) port will be used. For example:
-
-.. code-block:: yaml
-
-   ceph_rgw_hosts:
-     - host: rgw-host-1
-     - host: rgw-host-2
-       ip: 10.0.0.42
-       port: 8080
-
-The HAProxy frontend port is defined via ``ceph_rgw_port``, and defaults to
-6780.
-
-Cephadm and Ceph Client Version
-===============================
-When configuring Zun with Cinder volumes, kolla-ansible installs some
-Ceph client packages on zun-compute hosts. You can set the version
-of the Ceph packages installed by,
-
-#. Configuring Ceph version details in ``/etc/kolla/globals.yml``:
-
-   * ``ceph_version`` (default: ``pacific``)

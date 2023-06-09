@@ -40,8 +40,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'Kolla Ansible'
-copyright = '2013, OpenStack Foundation'
+project = u'kolla-ansible'
+copyright = u'2013, OpenStack Foundation'
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
 add_function_parentheses = True
@@ -61,25 +61,21 @@ pygments_style = 'native'
 html_theme = 'openstackdocs'
 # html_static_path = ['static']
 
-# Add any paths that contain "extra" files, such as .htaccess or
-# robots.txt.
-html_extra_path = ['_extra']
-
 html_theme_options = {
     "show_other_versions": True,
 }
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'kolla-ansibledoc'
+htmlhelp_basename = '%sdoc' % project
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass
 # [howto/manual]).
 latex_documents = [
     ('index',
-     'doc-kolla-ansible.tex',
-     'Kolla Ansible Documentation',
-     'OpenStack Foundation', 'manual'),
+     'doc-%s.tex' % project,
+     u'%s Documentation' % project,
+     u'OpenStack Foundation', 'manual'),
 ]
 
 # Disable usage of xindy https://bugzilla.redhat.com/show_bug.cgi?id=1643664
@@ -93,12 +89,10 @@ openstackdocs_bug_tag = ''
 openstack_projects = [
     'bifrost',
     'cinder',
-    'cloudkitty',
     'designate',
     'glance',
     'ironic',
     'keystone',
-    'kayobe',
     'kolla',
     'kolla-ansible',
     'magnum',
@@ -110,7 +104,6 @@ openstack_projects = [
     'octavia',
     'oslo.messaging',
     'oslotest',
-    'ovn-octavia-provider',
     'swift',
     'watcher',
 ]
@@ -124,19 +117,13 @@ KOLLA_OPENSTACK_RELEASE = openstackdocstheme.ext._get_series_name()
 if KOLLA_OPENSTACK_RELEASE == 'latest':
     KOLLA_OPENSTACK_RELEASE = 'master'
     KOLLA_BRANCH_NAME = 'master'
-    TESTED_RUNTIMES_GOVERNANCE_URL = 'https://governance.openstack.org/tc/reference/runtimes/'
 else:
     KOLLA_BRANCH_NAME = 'stable/{}'.format(KOLLA_OPENSTACK_RELEASE)
-    TESTED_RUNTIMES_GOVERNANCE_URL =\
-        'https://governance.openstack.org/tc/reference/runtimes/{}.html'.format(KOLLA_OPENSTACK_RELEASE)
 
 GLOBAL_VARIABLE_MAP = {
-    '|KOLLA_OPENSTACK_RELEASE|': KOLLA_OPENSTACK_RELEASE,
-    '|KOLLA_BRANCH_NAME|': KOLLA_BRANCH_NAME,
-    '|KOLLA_BRANCH_NAME_DASHED|': KOLLA_BRANCH_NAME.replace('/', '-'),
-    '|TESTED_RUNTIMES_GOVERNANCE_URL|': TESTED_RUNTIMES_GOVERNANCE_URL,
+    "|KOLLA_OPENSTACK_RELEASE|": KOLLA_OPENSTACK_RELEASE,
+    "|KOLLA_BRANCH_NAME|": KOLLA_BRANCH_NAME,
 }
-
 
 def replace_global_vars(app, docname, source):
     # unlike rst_epilog, replaces variables (strings) in code blocks as well

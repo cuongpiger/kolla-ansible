@@ -14,7 +14,7 @@
     dimensions: "{{ service.dimensions }}"
   when:
     - kolla_action != "config"
-    - inventory_hostname == groups[service.group] | first
+    - inventory_hostname == groups[service.group]|first
 
 - name: Waiting for grafana to start on first node
   listen: Restart grafana container
@@ -23,7 +23,6 @@
     service: "{{ grafana_services[service_name] }}"
   become: true
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: uri
     module_args:
       url: "http://{{ api_interface_address | put_address_in_context('url') }}:{{ grafana_server_port }}/login"
@@ -34,7 +33,7 @@
   delay: "{{ grafana_start_first_node_delay }}"
   when:
     - kolla_action != "config"
-    - inventory_hostname == groups[service.group] | first
+    - inventory_hostname == groups[service.group]|first
 
 - name: Restart remaining grafana containers
   listen: Restart grafana container
@@ -51,4 +50,4 @@
     dimensions: "{{ service.dimensions }}"
   when:
     - kolla_action != "config"
-    - inventory_hostname != groups[service.group] | first
+    - inventory_hostname != groups[service.group]|first

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Copyright 2016 99cloud Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,10 +19,7 @@ import docker
 import json
 import re
 
-from ansible.module_utils.ansible_release import __version__ as ansible_version
 from ansible.module_utils.basic import AnsibleModule
-
-from ast import literal_eval
 
 DOCUMENTATION = '''
 ---
@@ -31,11 +30,6 @@ description:
   - A module targerting at invoking ansible module in kolla_toolbox
     container as used by Kolla project.
 options:
-  container_engine:
-    description:
-      - Name of container engine to use
-    required: True
-    type: str
   module_name:
     description:
       - The module name to invoke
@@ -76,12 +70,10 @@ EXAMPLES = '''
   tasks:
     - name: Ensure the direct absent
       kolla_toolbox:
-        container_engine: docker
         module_name: file
         module_args: path=/tmp/a state=absent
     - name: Create mysql database
       kolla_toolbox:
-        container_engine: docker
         module_name: mysql_db
         module_args:
           login_host: 192.168.1.10
@@ -90,7 +82,6 @@ EXAMPLES = '''
           name: testdb
     - name: Creating default user role
       kolla_toolbox:
-        container_engine: docker
         module_name: os_keystone_role
         module_args:
           name: _member_
@@ -117,10 +108,7 @@ def gen_commandline(params):
     if params.get('module_name'):
         command.extend(['-m', params.get('module_name')])
     if params.get('module_args'):
-        if StrictVersion(ansible_version) < StrictVersion('2.11.0'):
-            module_args = params.get('module_args')
-        else:
-            module_args = literal_eval(params.get('module_args'))
+        module_args = params.get('module_args')
         if isinstance(module_args, dict):
             module_args = ' '.join("{}='{}'".format(key, value)
                                    for key, value in module_args.items())
@@ -144,7 +132,6 @@ def docker_supports_environment_in_exec(client):
 
 def main():
     specs = dict(
-        container_engine=dict(required=True, type='str'),
         module_name=dict(required=True, type='str'),
         module_args=dict(type='str'),
         module_extra_vars=dict(type='json'),

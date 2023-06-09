@@ -3,7 +3,7 @@
 set +o errexit
 
 copy_logs() {
-    LOG_DIR=${LOG_DIR:-/tmp/logs}
+    LOG_DIR=/tmp/logs
 
     cp -rnL /var/lib/docker/volumes/kolla_logs/_data/* ${LOG_DIR}/kolla/
     cp -rnL /etc/kolla/* ${LOG_DIR}/kolla_configs/
@@ -32,9 +32,6 @@ copy_logs() {
     lsblk > ${LOG_DIR}/system_logs/lsblk.txt
     mount > ${LOG_DIR}/system_logs/mount.txt
     env > ${LOG_DIR}/system_logs/env.txt
-    systemctl status > ${LOG_DIR}/system_logs/systemctl_status.txt
-    systemctl list-units --all > ${LOG_DIR}/system_logs/systemctl_units.txt
-    systemctl list-unit-files > ${LOG_DIR}/system_logs/systemctl_unit_files.txt
 
     (set -x
     ip a
@@ -69,7 +66,6 @@ copy_logs() {
     getent ahostsv6 $(hostname)) &> ${LOG_DIR}/system_logs/getent_ahostsvX.txt
 
     sysctl -a &> ${LOG_DIR}/system_logs/sysctl.txt
-    lsmod &> ${LOG_DIR}/system_logs/lsmod.txt
 
     if [ `command -v dpkg` ]; then
         dpkg -l > ${LOG_DIR}/system_logs/dpkg-l.txt
@@ -84,26 +80,24 @@ copy_logs() {
     # docker related information
     (docker info && docker images && docker ps -a && docker network ls && docker inspect $(docker ps -aq)) > ${LOG_DIR}/system_logs/docker-info.txt
 
-    # save dbus services
-    dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames > ${LOG_DIR}/system_logs/dbus-services.txt
-
-    # cephadm related logs
-    if [ `command -v cephadm` ]; then
-        mkdir -p ${LOG_DIR}/ceph
-        sudo cp /etc/ceph/ceph.conf ${LOG_DIR}/ceph
-        sudo cp /var/run/ceph/*/cluster.yml ${LOG_DIR}/ceph/cluster.yml
-        sudo cp /var/log/ceph/cephadm.log* ${LOG_DIR}/ceph/
-        sudo cephadm shell -- ceph --connect-timeout 5 -s > ${LOG_DIR}/ceph/ceph_s.txt
-        sudo cephadm shell -- ceph --connect-timeout 5 osd tree > ${LOG_DIR}/ceph/ceph_osd_tree.txt
-    fi
+    # ceph-ansible related logs
+    mkdir -p ${LOG_DIR}/ceph
+    for container in $(docker ps --filter name=ceph-mon --format "{{.Names}}"); do
+        docker exec ${container} ceph --connect-timeout 5 -s > ${LOG_DIR}/ceph/ceph_s.txt
+        # NOTE(yoctozepto): osd df removed on purpose to avoid CI POST_FAILURE due to a possible hang:
+        # as of ceph mimic it hangs when MON is operational but MGR not
+        # its usefulness is mediocre and having POST_FAILUREs is bad
+        docker exec ${container} ceph --connect-timeout 5 osd tree > ${LOG_DIR}/ceph/ceph_osd_tree.txt
+    done
 
     # bifrost related logs
     if [[ $(docker ps --filter name=bifrost_deploy --format "{{.Names}}") ]]; then
-        for service in dnsmasq ironic ironic-api ironic-conductor ironic-inspector mariadb nginx; do
+        for service in dnsmasq ironic-api ironic-conductor ironic-inspector mariadb nginx rabbitmq-server; do
             mkdir -p ${LOG_DIR}/kolla/$service
             docker exec bifrost_deploy systemctl status $service > ${LOG_DIR}/kolla/$service/systemd-status-$service.txt
         done
         docker exec bifrost_deploy journalctl -u mariadb > ${LOG_DIR}/kolla/mariadb/mariadb.txt
+        docker exec bifrost_deploy journalctl -u rabbitmq-server > ${LOG_DIR}/kolla/rabbitmq-server/rabbitmq.txt
     fi
 
     # haproxy related logs

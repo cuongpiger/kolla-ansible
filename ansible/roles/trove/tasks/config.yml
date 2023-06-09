@@ -33,7 +33,7 @@
 
 - include_tasks: copy-certs.yml
   when:
-    - kolla_copy_ca_into_containers | bool or trove_enable_tls_backend | bool
+    - kolla_copy_ca_into_containers | bool
 
 - name: Copying over config.json files for services
   template:
@@ -48,23 +48,28 @@
   notify:
     - "Restart {{ item.key }} container"
 
-- name: Copying over trove-wsgi.conf
+- name: Copying over trove conf files
   vars:
-    service: "{{ trove_services['trove-api'] }}"
-  become: true
-  template:
-    src: "{{ item }}"
-    dest: "{{ node_config_directory }}/trove-api/trove-wsgi.conf"
+    services_need_confs:
+      - trove-conductor
+      - trove-taskmanager
+  merge_configs:
+    sources:
+      - "{{ role_path }}/templates/{{ item.key }}.conf.j2"
+      - "{{ node_custom_config }}/global.conf"
+      - "{{ node_custom_config }}/{{ item.key }}.conf"
+      - "{{ node_custom_config }}/trove/{{ item.key }}.conf"
+      - "{{ node_custom_config }}/trove/{{ inventory_hostname }}/{{ item.key }}.conf"
+    dest: "{{ node_config_directory }}/{{ item.key }}/{{ item.key }}.conf"
     mode: "0660"
-  with_first_found:
-    - "{{ node_custom_config }}/trove/{{ inventory_hostname }}/trove-wsgi.conf"
-    - "{{ node_custom_config }}/trove/trove-wsgi.conf"
-    - "trove-wsgi.conf.j2"
+  become: true
   when:
-    - inventory_hostname in groups[service.group]
-    - service.enabled | bool
+    - item.key in services_need_confs
+    - inventory_hostname in groups[item.value.group]
+    - item.value.enabled | bool
+  with_dict: "{{ trove_services }}"
   notify:
-    - Restart trove-api container
+    - "Restart {{ item.key }} container"
 
 - name: Copying over trove-guestagent.conf
   vars:

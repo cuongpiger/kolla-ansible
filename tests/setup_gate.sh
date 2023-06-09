@@ -18,10 +18,7 @@ function setup_openstack_clients {
         packages+=(python-ironicclient python-ironic-inspector-client)
     fi
     if [[ $SCENARIO == magnum ]]; then
-        packages+=(python-designateclient python-magnumclient python-troveclient)
-    fi
-    if [[ $SCENARIO == octavia ]]; then
-        packages+=(python-octaviaclient)
+        packages+=(python-designateclient python-magnumclient python-octaviaclient)
     fi
     if [[ $SCENARIO == masakari ]]; then
         packages+=(python-masakariclient)
@@ -46,22 +43,18 @@ function prepare_images {
     fi
 
     if [[ $SCENARIO != "bifrost" ]]; then
-        GATE_IMAGES="^cron,^fluentd,^glance,^haproxy,^keepalived,^keystone,^kolla-toolbox,^mariadb,^memcached,^neutron,^nova-,^openvswitch,^rabbitmq,^horizon,^heat,^placement"
+        GATE_IMAGES="^cron,^fluentd,^glance,^haproxy,^keepalived,^keystone,^kolla-toolbox,^mariadb,^memcached,^neutron,^nova-,^openvswitch,^rabbitmq,^horizon,^chrony,^heat,^placement"
     else
         GATE_IMAGES="bifrost"
     fi
 
-    if [[ $SCENARIO == "cephadm" ]]; then
+    if [[ $SCENARIO == "ceph-ansible" ]]; then
         GATE_IMAGES+=",^cinder"
-    fi
-
-    if [[ $SCENARIO == "cells" ]]; then
-        GATE_IMAGES+=",^proxysql"
     fi
 
     if [[ $SCENARIO == "zun" ]]; then
         GATE_IMAGES+=",^zun,^kuryr,^etcd,^cinder,^iscsid"
-        if [[ $BASE_DISTRO != "centos" && $BASE_DISTRO != "rocky" ]]; then
+        if [[ $BASE_DISTRO != "centos" ]]; then
             GATE_IMAGES+=",^tgtd"
         fi
     fi
@@ -73,13 +66,10 @@ function prepare_images {
         GATE_IMAGES+=",^dnsmasq,^ironic,^iscsid"
     fi
     if [[ $SCENARIO == "magnum" ]]; then
-        GATE_IMAGES+=",^designate,^magnum,^trove"
-    fi
-    if [[ $SCENARIO == "octavia" ]]; then
-        GATE_IMAGES+=",^octavia"
+        GATE_IMAGES+=",^designate,^magnum,^octavia"
     fi
     if [[ $SCENARIO == "masakari" ]]; then
-        GATE_IMAGES+=",^masakari-,^hacluster-"
+        GATE_IMAGES+=",^masakari"
     fi
 
     if [[ $SCENARIO == "swift" ]]; then
@@ -94,12 +84,8 @@ function prepare_images {
         GATE_IMAGES="^cron,^fluentd,^haproxy,^keepalived,^kolla-toolbox,^mariadb"
     fi
 
-    if [[ $SCENARIO == "prometheus-opensearch" ]]; then
-        GATE_IMAGES="^cron,^fluentd,^grafana,^haproxy,^keepalived,^kolla-toolbox,^mariadb,^memcached,^opensearch,^prometheus,^rabbitmq"
-    fi
-
-    if [[ $SCENARIO == "venus" ]]; then
-        GATE_IMAGES="^cron,^elasticsearch,^fluentd,^haproxy,^keepalived,^keystone,^kolla-toolbox,^mariadb,^memcached,^rabbitmq,^venus"
+    if [[ $SCENARIO == "prometheus-efk" ]]; then
+        GATE_IMAGES="^cron,^elasticsearch,^fluentd,^grafana,^haproxy,^keepalived,^kibana,^kolla-toolbox,^mariadb,^memcached,^prometheus,^rabbitmq"
     fi
 
     sudo tee -a /etc/kolla/kolla-build.conf <<EOF
@@ -109,7 +95,7 @@ EOF
 
     mkdir -p /tmp/logs/build
 
-    sudo docker run -d --net=host -e REGISTRY_HTTP_ADDR=0.0.0.0:4000 --restart=always -v /opt/kolla_registry/:/var/lib/registry --name registry registry:2
+    sudo docker run -d -p 4000:5000 --restart=always -v /opt/kolla_registry/:/var/lib/registry --name registry registry:2
 
     python3 -m venv ~/kolla-venv
     . ~/kolla-venv/bin/activate
@@ -133,9 +119,6 @@ EOF
 setup_openstack_clients
 
 RAW_INVENTORY=/etc/kolla/inventory
-
-source $KOLLA_ANSIBLE_VENV_PATH/bin/activate
-kolla-ansible -i ${RAW_INVENTORY} -vvv bootstrap-servers &> /tmp/logs/ansible/bootstrap-servers
-deactivate
+kolla-ansible -i ${RAW_INVENTORY} -e ansible_user=$USER -vvv bootstrap-servers &> /tmp/logs/ansible/bootstrap-servers
 
 prepare_images

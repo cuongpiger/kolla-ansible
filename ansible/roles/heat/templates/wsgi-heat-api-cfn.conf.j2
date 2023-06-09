@@ -1,7 +1,7 @@
 {% set heat_log_dir = '/var/log/kolla/heat' %}
-{% set binary_path = '/var/lib/kolla/venv/bin' %}
+{% set binary_path = '/usr/bin' if heat_install_type == 'binary' else '/var/lib/kolla/venv/bin' %}
 {% if heat_enable_tls_backend | bool %}
-{% if kolla_base_distro in ['centos', 'rocky']  %}
+{% if kolla_base_distro in ['centos']  %}
 LoadModule ssl_module /usr/lib64/httpd/modules/mod_ssl.so
 {% else %}
 LoadModule ssl_module /usr/lib/apache2/modules/mod_ssl.so
@@ -12,7 +12,6 @@ Listen {{ api_interface_address | put_address_in_context('url') }}:{{ heat_api_c
 ServerSignature Off
 ServerTokens Prod
 TraceEnable off
-TimeOut {{ kolla_httpd_timeout }}
 KeepAliveTimeout {{ kolla_httpd_keep_alive }}
 
 <Directory "{{ binary_path }}">
@@ -29,7 +28,7 @@ CustomLog "{{ heat_log_dir }}/apache-cfn-access.log" common
 </IfModule>
 
 <VirtualHost *:{{ heat_api_cfn_listen_port }}>
-    WSGIDaemonProcess heat-api-cfn processes={{ heat_api_cfn_workers }} threads=1 user=heat group=heat display-name=heat-api-cfn
+    WSGIDaemonProcess heat-api-cfn processes={{ openstack_service_workers }} threads=1 user=heat group=heat display-name=%{GROUP}
     WSGIProcessGroup heat-api-cfn
     WSGIScriptAlias / {{ binary_path }}/heat-wsgi-api-cfn
     WSGIApplicationGroup %{GLOBAL}

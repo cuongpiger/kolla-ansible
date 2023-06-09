@@ -23,13 +23,14 @@ iscsi_services:
 ####################
 # Docker
 ####################
+iscsi_install_type: "{{ kolla_install_type }}"
 iscsi_tag: "{{ openstack_tag }}"
 
-iscsid_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/iscsid"
+iscsid_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ iscsi_install_type }}-iscsid"
 iscsid_tag: "{{ iscsi_tag }}"
 iscsid_image_full: "{{ iscsid_image }}:{{ iscsid_tag }}"
 
-tgtd_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/tgtd"
+tgtd_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ iscsi_install_type }}-tgtd"
 tgtd_tag: "{{ iscsi_tag }}"
 tgtd_image_full: "{{ tgtd_image }}:{{ tgtd_tag }}"
 
@@ -43,8 +44,10 @@ iscsid_default_volumes:
   - "{{ '/etc/timezone:/etc/timezone:ro' if ansible_facts.os_family == 'Debian' else '' }}"
   - "/dev/:/dev/"
   - "/run/:/run/:shared"
+  - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
   - "/lib/modules:/lib/modules:ro"
   - "/sys/kernel/config:/configfs"
+  - "cinder:/var/lib/cinder"
   - "iscsi_info:/etc/iscsi"
 tgtd_default_volumes:
   - "{{ node_config_directory }}/tgtd/:{{ container_config_directory }}/:ro"
@@ -53,8 +56,11 @@ tgtd_default_volumes:
   - "{{ '/etc/timezone:/etc/timezone:ro' if ansible_facts.os_family == 'Debian' else '' }}"
   - "/dev/:/dev/"
   - "/run/:/run/:shared"
+  - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
   - "/lib/modules:/lib/modules:ro"
   - "/sys/kernel/config:/configfs"
+  - "cinder:/var/lib/cinder"
+  - "iscsi_info:/etc/iscsi"
 iscsid_extra_volumes: "{{ default_extra_volumes }}"
 tgtd_extra_volumes: "{{ default_extra_volumes }}"
 

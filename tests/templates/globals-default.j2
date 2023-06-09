@@ -1,16 +1,12 @@
 ---
-{% if ansible_os_family == 'Debian' or ansible_facts.distribution == "openEuler" %}
-# Force the use of python3 on Debian, Ubuntu and openEuler remote hosts. These distros
+{% if ansible_os_family == 'Debian' %}
+# Force the use of python3 on Debian and Ubuntu remote hosts. These distros
 # typically have an unversioned Python interpreter which links to python2.7.
 ansible_python_interpreter: /usr/bin/python3
 {% endif %}
 
-# NOTE(yoctozepto): In CI it makes sense to always try to fail
-# as early as possible.
-kolla_ansible_setup_any_errors_fatal: true
-
 kolla_base_distro: "{{ base_distro }}"
-# Zed dropped install_type so we have it only on upgrades
+kolla_install_type: "{{ install_type }}"
 network_interface: "{{ api_interface_name }}"
 network_address_family: "{{ address_family }}"
 docker_restart_policy: "no"
@@ -18,17 +14,14 @@ docker_custom_config:
   debug: true
   registry-mirrors:
     - {{ infra_dockerhub_mirror }}
-{% if need_build_image and is_previous_release %}
-  insecure-registries:
-    - primary:4000
-{% endif %}
-{% if ansible_facts.distribution == "openEuler" %}
-  exec-opts: ["native.umask=normal"]
-{% endif %}
 
 {% if kolla_python_version is defined and not is_previous_release %}
 distro_python_version: "{{ kolla_python_version }}"
 {% endif %}
+
+# Use a random router id, otherwise it may result in the same router id
+# in the CI gate.
+keepalived_virtual_router_id: "{{ 250 | random(1) }}"
 
 # MariaDB/Galera - fine tune gmcast.peer_timeout
 mariadb_wsrep_extra_provider_options:
@@ -46,7 +39,6 @@ neutron_external_interface: "{{ neutron_external_interface_name }}"
 openstack_logging_debug: "True"
 nova_libvirt_logging_debug: "False"
 openstack_service_workers: "1"
-openstack_service_rpc_workers: "1"
 {% endif %}
 
 {% if need_build_image and not is_previous_release %}
@@ -56,7 +48,6 @@ docker_namespace: "lokolla"
 # docker does not support referencing registry via an IPv6 address
 # see: https://github.com/moby/moby/issues/39033
 docker_registry: "primary:4000"
-docker_registry_insecure: yes
 openstack_tag: "{{ build_image_tag }}"
 {% else %}
 # use the published images from a site mirror of quay.io
@@ -65,6 +56,16 @@ docker_registry_insecure: no
 docker_namespace: openstack.kolla
 {% if docker_image_tag_suffix %}
 openstack_tag_suffix: "{{ docker_image_tag_suffix }}"
+{% endif %}
+{% if need_build_image and is_previous_release %}
+# NOTE(mgoddard): Ensure that the insecure local registry is trusted, since it
+# will be the source of images during the upgrade.
+# NOTE(yoctozepto): this is required here for CI because we run templating
+# of docker systemd command only once
+docker_custom_option: "--insecure-registry primary:4000"
+{% endif %}
+{% if is_previous_release %}
+openstack_release: "{{ previous_release }}"
 {% endif %}
 {% endif %}
 
@@ -78,9 +79,6 @@ enable_cinder: "yes"
 # lvm backup driver for cinder-backup does not exist
 enable_cinder_backup: "no"
 enable_cinder_backend_lvm: "yes"
-# pin Docker to 20 - https://bugs.launchpad.net/zun/+bug/2007142
-docker_apt_package_pin: "5:20.*"
-docker_yum_package_pin: "20.*"
 {% endif %}
 
 {% if scenario == "swift" %}
@@ -100,8 +98,7 @@ enable_aodh: "yes"
 
 {% if scenario == "ironic" %}
 enable_ironic: "yes"
-ironic_dnsmasq_dhcp_ranges:
-  - range: "10.42.0.2,10.42.0.254,255.255.255.0"
+ironic_dnsmasq_dhcp_range: "10.42.0.2,10.42.0.254,255.255.255.0"
 {% endif %}
 
 {% if scenario == "masakari" %}
@@ -110,39 +107,23 @@ enable_masakari: "yes"
 
 {% if scenario == "cells" %}
 enable_cells: "yes"
-enable_proxysql: "yes"
 {% endif %}
 
 {% if scenario == "mariadb" %}
+enable_chrony: "no"
 enable_fluentd: "yes"
 enable_mariadb: "yes"
 enable_memcached: "no"
 enable_rabbitmq: "no"
 {% endif %}
 
-{% if scenario == "cephadm" %}
-{% if ansible_facts.distribution == "Rocky" %}
-docker_custom_config:
-  default-ulimits:
-    nofile:
-      Name: nofile
-      Hard: 1048576
-      Soft: 1048576
-{% endif %}
+{% if scenario == "ceph-ansible" %}
 # kolla-ansible vars
 enable_cinder: "yes"
 # External Ceph
 glance_backend_ceph: "yes"
 cinder_backend_ceph: "yes"
 nova_backend_ceph: "yes"
-
-enable_ceph_rgw: "yes"
-ceph_rgw_hosts:
-{% for host in hostvars %}
-  - host: {{ host }}
-    ip: {{ hostvars[host]['ansible_host'] }}
-    port: 6780
-{% endfor %}
 {% endif %}
 
 {% if tls_enabled %}
@@ -150,26 +131,29 @@ kolla_enable_tls_external: "yes"
 kolla_enable_tls_internal: "yes"
 kolla_copy_ca_into_containers: "yes"
 kolla_enable_tls_backend: "yes"
-{% if base_distro in ["debian", "ubuntu"] %}
+{% if base_distro == "ubuntu" or base_distro == "debian" %}
 openstack_cacert: "/etc/ssl/certs/ca-certificates.crt"
 {% endif %}
-{% if base_distro in ["centos", "rocky"] %}
+{% if base_distro == "centos" %}
 openstack_cacert: "/etc/pki/tls/certs/ca-bundle.crt"
 {% endif %}
 kolla_admin_openrc_cacert: "{% raw %}{{ kolla_certificates_dir }}{% endraw %}/ca/root.crt"
-rabbitmq_enable_tls: "yes"
-libvirt_tls: "yes"
+# FIXME(mnasiadka): Re-enable when https://review.opendev.org/#/c/761194/ is merged
+rabbitmq_enable_tls: "no"
+{% endif %}
+
+{% if scenario == 'linuxbridge' %}
+neutron_plugin_agent: "linuxbridge"
 {% endif %}
 
 {% if scenario == "ovn" %}
 neutron_plugin_agent: "ovn"
 neutron_ovn_distributed_fip: "yes"
 enable_octavia: "yes"
-octavia_provider_drivers: "ovn:OVN provider"
-octavia_provider_agents: "ovn"
 {% endif %}
 
-{% if scenario == "prometheus-opensearch" %}
+{% if scenario == "prometheus-efk" %}
+enable_chrony: "no"
 enable_central_logging: "yes"
 enable_grafana: "yes"
 enable_prometheus: "yes"
@@ -179,24 +163,5 @@ enable_prometheus_openstack_exporter: "no"
 {% if scenario == "magnum" %}
 enable_designate: "yes"
 enable_magnum: "yes"
-enable_trove: "yes"
-{% endif %}
-
-{% if scenario == "octavia" %}
 enable_octavia: "yes"
-# NOTE(wuchunyang): work around for qemu-kvm 5.1 can not attach second NIC.
-# more: http://lists.openstack.org/pipermail/openstack-discuss/2021-February/020218.html
-octavia_amp_flavor:
-  name: "amphora"
-  is_public: no
-  vcpus: 2
-  ram: 1024
-  disk: 5
-octavia_network_type: "tenant"
-{% endif %}
-
-{% if scenario == "venus" %}
-enable_opensearch: "yes"
-enable_keystone: "yes"
-enable_venus: "yes"
 {% endif %}

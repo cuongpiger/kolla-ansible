@@ -21,34 +21,26 @@
 # By default, we do not provide a gather subset.
 #kolla_ansible_setup_gather_subset: "{{ omit }}"
 
-# Dummy variable to allow Ansible to accept this file.
-workaround_ansible_issue_8743: yes
-
-# This variable is used as "any_errors_fatal" setting for the setup (gather
-# facts) plays.
-# This is useful for weeding out failing hosts early to avoid late failures
-# due to missing facts (especially cross-host).
-# Do note this still supports host fact caching and it will not affect
-# scenarios with all facts cached (as there is no task to fail).
-#kolla_ansible_setup_any_errors_fatal: false
-
 ###############
 # Kolla options
 ###############
 # Valid options are [ COPY_ONCE, COPY_ALWAYS ]
 #config_strategy: "COPY_ALWAYS"
 
-# Valid options are ['centos', 'debian', 'rocky', 'ubuntu']
-#kolla_base_distro: "rocky"
+# Valid options are ['centos', 'debian', 'rhel', 'ubuntu']
+#kolla_base_distro: "centos"
+
+# Valid options are [ binary, source ]
+#kolla_install_type: "binary"
 
 # Do not override this unless you know what you are doing.
-#openstack_release: "master"
+#openstack_release: "victoria"
 
 # Docker image tag used by default.
 #openstack_tag: "{{ openstack_release ~ openstack_tag_suffix }}"
 
 # Suffix applied to openstack_release to generate openstack_tag.
-#openstack_tag_suffix: ""
+#openstack_tag_suffix: "{{ '-centos8s' if 'Stream' in (kolla_centos_release['content'] | default() | b64decode ) else '' }}"
 
 # Location of configuration overrides
 #node_custom_config: "{{ node_config }}/config"
@@ -80,20 +72,12 @@ workaround_ansible_issue_8743: yes
 #kolla_sysctl_conf_path: /etc/sysctl.conf
 
 ################
-# Container engine
-################
-
-# Valid options are [ docker ]
-# kolla_container_engine: docker
-
-################
 # Docker options
 ################
 
 # Custom docker registry settings:
 #docker_registry:
-# Please read the docs carefully before applying docker_registry_insecure.
-#docker_registry_insecure: "no"
+#docker_registry_insecure: "{{ 'yes' if docker_registry else 'no' }}"
 #docker_registry_username:
 # docker_registry_password is set in the passwords.yml file.
 
@@ -110,6 +94,15 @@ workaround_ansible_issue_8743: yes
 ###################
 # Messaging options
 ###################
+# Below is an example of an separate backend that provides brokerless
+# messaging for oslo.messaging RPC communications
+
+#om_rpc_transport: "amqp"
+#om_rpc_user: "{{ qdrouterd_user }}"
+#om_rpc_password: "{{ qdrouterd_password }}"
+#om_rpc_port: "{{ qdrouterd_port }}"
+#om_rpc_group: "qdrouterd"
+
 # Whether to enable TLS for oslo.messaging communication with RabbitMQ.
 #om_enable_rabbitmq_tls: "{{ rabbitmq_enable_tls | bool }}"
 # CA certificate bundle in containers using oslo.messaging with RabbitMQ TLS.
@@ -133,7 +126,8 @@ workaround_ansible_issue_8743: yes
 # the 'network_interface'. These interfaces must contain an IP address.
 #kolla_external_vip_interface: "{{ network_interface }}"
 #api_interface: "{{ network_interface }}"
-#swift_storage_interface: "{{ network_interface }}"
+#storage_interface: "{{ network_interface }}"
+#swift_storage_interface: "{{ storage_interface }}"
 #swift_replication_interface: "{{ swift_storage_interface }}"
 #tunnel_interface: "{{ network_interface }}"
 #dns_interface: "{{ network_interface }}"
@@ -158,10 +152,8 @@ workaround_ansible_issue_8743: yes
 # addresses for that reason.
 #neutron_external_interface: "eth1"
 
-# Valid options are [ openvswitch, ovn, linuxbridge, vmware_nsxv, vmware_nsxv3, vmware_nsxp, vmware_dvs ]
-# if vmware_nsxv3 or vmware_nsxp is selected, enable_openvswitch MUST be set to "no" (default is yes)
-# Do note linuxbridge is *EXPERIMENTAL* in Neutron since Zed and it requires extra tweaks to config to be usable.
-# For details, see: https://docs.openstack.org/neutron/latest/admin/config-experimental-framework.html
+# Valid options are [ openvswitch, ovn, linuxbridge, vmware_nsxv, vmware_nsxv3, vmware_dvs ]
+# if vmware_nsxv3 is selected, enable_openvswitch MUST be set to "no" (default is yes)
 #neutron_plugin_agent: "openvswitch"
 
 # Valid options are [ internal, infoblox ]
@@ -174,10 +166,6 @@ workaround_ansible_issue_8743: yes
 # Neutron rolling upgrade were enable by default
 #neutron_enable_rolling_upgrade: "yes"
 
-# Configure neutron logging framework to log ingress/egress connections to instances
-# for security groups rules. More information can be found here:
-# https://docs.openstack.org/neutron/latest/admin/config-logging.html
-#enable_neutron_packet_logging: "no"
 
 ####################
 # keepalived options
@@ -221,15 +209,6 @@ workaround_ansible_issue_8743: yes
 #default_container_healthcheck_retries: 3
 #default_container_healthcheck_start_period: 5
 
-##################
-# Firewall options
-##################
-# Configures firewalld on both ubuntu and centos systems
-# for enabled services.
-# firewalld should be installed beforehand.
-# disable_firewall: "true"
-# enable_external_api_firewalld: "false"
-# external_api_firewalld_zone: "public"
 
 #############
 # TLS options
@@ -251,7 +230,6 @@ workaround_ansible_issue_8743: yes
 # Backend options
 ##################
 #kolla_httpd_keep_alive: "60"
-#kolla_httpd_timeout: "60"
 
 #####################
 # Backend TLS options
@@ -293,7 +271,6 @@ workaround_ansible_issue_8743: yes
 # These roles are required for Kolla to be operation, however a savvy deployer
 # could disable some of these required roles and run their own services.
 #enable_glance: "{{ enable_openstack_core | bool }}"
-#enable_hacluster: "no"
 #enable_haproxy: "yes"
 #enable_keepalived: "{{ enable_haproxy | bool }}"
 #enable_keystone: "{{ enable_openstack_core | bool }}"
@@ -312,8 +289,7 @@ workaround_ansible_issue_8743: yes
 #enable_ceilometer_ipmi: "no"
 #enable_cells: "no"
 #enable_central_logging: "no"
-#enable_ceph_rgw: "no"
-#enable_ceph_rgw_loadbalancer: "{{ enable_ceph_rgw | bool }}"
+#enable_chrony: "yes"
 #enable_cinder: "no"
 #enable_cinder_backup: "yes"
 #enable_cinder_backend_hnas_nfs: "no"
@@ -321,21 +297,19 @@ workaround_ansible_issue_8743: yes
 #enable_cinder_backend_lvm: "no"
 #enable_cinder_backend_nfs: "no"
 #enable_cinder_backend_quobyte: "no"
-#enable_cinder_backend_pure_iscsi: "no"
-#enable_cinder_backend_pure_fc: "no"
-#enable_cinder_backend_pure_roce: "no"
 #enable_cloudkitty: "no"
 #enable_collectd: "no"
 #enable_cyborg: "no"
 #enable_designate: "no"
 #enable_destroy_images: "no"
+#enable_elasticsearch: "{{ 'yes' if enable_central_logging | bool or enable_osprofiler | bool or enable_skydive | bool or enable_monasca | bool or (enable_cloudkitty | bool and cloudkitty_storage_backend == 'elasticsearch') else 'no' }}"
+#enable_elasticsearch_curator: "no"
 #enable_etcd: "no"
 #enable_fluentd: "yes"
 #enable_freezer: "no"
 #enable_gnocchi: "no"
 #enable_gnocchi_statsd: "no"
 #enable_grafana: "no"
-#enable_grafana_external: "{{ enable_grafana | bool }}"
 #enable_heat: "{{ enable_openstack_core | bool }}"
 #enable_horizon: "{{ enable_openstack_core | bool }}"
 #enable_horizon_blazar: "{{ enable_blazar | bool }}"
@@ -344,14 +318,18 @@ workaround_ansible_issue_8743: yes
 #enable_horizon_freezer: "{{ enable_freezer | bool }}"
 #enable_horizon_heat: "{{ enable_heat | bool }}"
 #enable_horizon_ironic: "{{ enable_ironic | bool }}"
+#enable_horizon_karbor: "{{ enable_karbor | bool }}"
 #enable_horizon_magnum: "{{ enable_magnum | bool }}"
 #enable_horizon_manila: "{{ enable_manila | bool }}"
 #enable_horizon_masakari: "{{ enable_masakari | bool }}"
 #enable_horizon_mistral: "{{ enable_mistral | bool }}"
+#enable_horizon_monasca: "{{ enable_monasca | bool }}"
 #enable_horizon_murano: "{{ enable_murano | bool }}"
 #enable_horizon_neutron_vpnaas: "{{ enable_neutron_vpnaas | bool }}"
 #enable_horizon_octavia: "{{ enable_octavia | bool }}"
+#enable_horizon_qinling: "{{ enable_qinling | bool }}"
 #enable_horizon_sahara: "{{ enable_sahara | bool }}"
+#enable_horizon_searchlight: "{{ enable_searchlight | bool }}"
 #enable_horizon_senlin: "{{ enable_senlin | bool }}"
 #enable_horizon_solum: "{{ enable_solum | bool }}"
 #enable_horizon_tacker: "{{ enable_tacker | bool }}"
@@ -359,10 +337,15 @@ workaround_ansible_issue_8743: yes
 #enable_horizon_vitrage: "{{ enable_vitrage | bool }}"
 #enable_horizon_watcher: "{{ enable_watcher | bool }}"
 #enable_horizon_zun: "{{ enable_zun | bool }}"
-#enable_influxdb: "{{ enable_cloudkitty | bool and cloudkitty_storage_backend == 'influxdb' }}"
+#enable_influxdb: "{{ enable_monasca | bool or (enable_cloudkitty | bool and cloudkitty_storage_backend == 'influxdb') }}"
 #enable_ironic: "no"
+#enable_ironic_ipxe: "no"
 #enable_ironic_neutron_agent: "{{ enable_neutron | bool and enable_ironic | bool }}"
-#enable_iscsid: "{{ enable_cinder | bool and enable_cinder_backend_iscsi | bool }}"
+#enable_ironic_pxe_uefi: "no"
+#enable_iscsid: "{{ (enable_cinder | bool and enable_cinder_backend_iscsi | bool) or enable_ironic | bool }}"
+#enable_karbor: "no"
+#enable_kafka: "{{ enable_monasca | bool }}"
+#enable_kibana: "{{ 'yes' if enable_central_logging | bool or enable_monasca | bool else 'no' }}"
 #enable_kuryr: "no"
 #enable_magnum: "no"
 #enable_manila: "no"
@@ -370,10 +353,10 @@ workaround_ansible_issue_8743: yes
 #enable_manila_backend_hnas: "no"
 #enable_manila_backend_cephfs_native: "no"
 #enable_manila_backend_cephfs_nfs: "no"
-#enable_manila_backend_glusterfs_nfs: "no"
 #enable_mariabackup: "no"
 #enable_masakari: "no"
 #enable_mistral: "no"
+#enable_monasca: "no"
 #enable_multipathd: "no"
 #enable_murano: "no"
 #enable_neutron_vpnaas: "no"
@@ -392,31 +375,35 @@ workaround_ansible_issue_8743: yes
 #enable_nova_serialconsole_proxy: "no"
 #enable_nova_ssh: "yes"
 #enable_octavia: "no"
-#enable_octavia_driver_agent: "{{ enable_octavia | bool and neutron_plugin_agent == 'ovn' }}"
-#enable_opensearch: "{{ enable_central_logging | bool or enable_osprofiler | bool or (enable_cloudkitty | bool and cloudkitty_storage_backend == 'elasticsearch') }}"
-#enable_opensearch_dashboards: "{{ enable_opensearch | bool }}"
-#enable_opensearch_dashboards_external: "{{ enable_opensearch_dashboards | bool }}"
+#enable_octavia_driver_agent: "{{ enable_octavia | bool and neutron_plugin_agent == 'ovn' and groups['octavia-driver-agent'] is defined }}"
 #enable_openvswitch: "{{ enable_neutron | bool and neutron_plugin_agent != 'linuxbridge' }}"
 #enable_ovn: "{{ enable_neutron | bool and neutron_plugin_agent == 'ovn' }}"
 #enable_ovs_dpdk: "no"
 #enable_osprofiler: "no"
+#enable_panko: "no"
 #enable_placement: "{{ enable_nova | bool or enable_zun | bool }}"
 #enable_prometheus: "no"
-#enable_proxysql: "no"
+#enable_qdrouterd: "{{ 'yes' if om_rpc_transport == 'amqp' else 'no' }}"
+#enable_qinling: "no"
+#enable_rally: "no"
 #enable_redis: "no"
 #enable_sahara: "no"
+#enable_searchlight: "no"
 #enable_senlin: "no"
-#enable_skyline: "no"
+#enable_skydive: "no"
 #enable_solum: "no"
+#enable_storm: "{{ enable_monasca | bool }}"
 #enable_swift: "no"
 #enable_swift_s3api: "no"
 #enable_tacker: "no"
 #enable_telegraf: "no"
+#enable_tempest: "no"
 #enable_trove: "no"
 #enable_trove_singletenant: "no"
-#enable_venus: "no"
 #enable_vitrage: "no"
+#enable_vmtp: "no"
 #enable_watcher: "no"
+#enable_zookeeper: "{{ enable_kafka | bool or enable_storm | bool }}"
 #enable_zun: "no"
 
 ##################
@@ -477,6 +464,9 @@ workaround_ansible_issue_8743: yes
 # Keystone - Identity Options
 #############################
 
+# Valid options are [ fernet ]
+#keystone_token_provider: 'fernet'
+
 #keystone_admin_user: "admin"
 
 #keystone_admin_project: "admin"
@@ -533,7 +523,6 @@ workaround_ansible_issue_8743: yes
 # Enable / disable Cinder backends
 #cinder_backend_ceph: "no"
 #cinder_backend_vmwarevc_vmdk: "no"
-#cinder_backend_vmware_vstorage_object: "no"
 #cinder_volume_group: "cinder-volumes"
 # Valid options are [ '', redis, etcd ]
 #cinder_coordination_backend: "{{ 'redis' if enable_redis|bool else 'etcd' if enable_etcd|bool else '' }}"
@@ -560,8 +549,7 @@ workaround_ansible_issue_8743: yes
 ###################
 # Valid options are [ bind9 ]
 #designate_backend: "bind9"
-#designate_ns_record:
-#  - "ns1.example.org"
+#designate_ns_record: "sample.openstack.org"
 # Valid options are [ '', redis ]
 #designate_coordination_backend: "{{ 'redis' if enable_redis|bool else '' }}"
 
@@ -607,12 +595,10 @@ workaround_ansible_issue_8743: yes
 #############################
 # dnsmasq bind interface for Ironic Inspector, by default is network_interface
 #ironic_dnsmasq_interface: "{{ network_interface }}"
-# The following value must be set when enabling ironic, the value format is a
-# list of ranges - at least one must be configured, for example:
-# - range: 192.168.0.10,192.168.0.100
-# See Kolla Ansible docs on Ironic for details.
-#ironic_dnsmasq_dhcp_ranges:
-# PXE bootloader file for Ironic Inspector, relative to /var/lib/ironic/tftpboot.
+# The following value must be set when enabling ironic, the value format is
+# "192.168.0.10,192.168.0.100,255.255.255.0" the last being an optional netmask.
+#ironic_dnsmasq_dhcp_range:
+# PXE bootloader file for Ironic Inspector, relative to /tftpboot.
 #ironic_dnsmasq_boot_file: "pxelinux.0"
 
 # Configure ironic upgrade option, due to currently kolla support
@@ -625,9 +611,6 @@ workaround_ansible_issue_8743: yes
 # List of extra kernel parameters passed to the kernel used during inspection
 #ironic_inspector_kernel_cmdline_extras: []
 
-# Valid options are [ '', redis, etcd ]
-#ironic_coordination_backend: "{{ 'redis' if enable_redis|bool else 'etcd' if enable_etcd|bool else '' }}"
-
 ######################################
 # Manila - Shared File Systems Options
 ######################################
@@ -638,42 +621,6 @@ workaround_ansible_issue_8743: yes
 #hnas_evs_id:
 #hnas_evs_ip:
 #hnas_file_system_name:
-
-# CephFS backend configuration.
-# External Ceph FS name.
-# By default this is empty to allow Manila to auto-find the first FS available.
-#manila_cephfs_filesystem_name:
-
-# Gluster backend configuration
-# The option of glusterfs share layout can be directory or volume
-# The default option of share layout is 'volume'
-#manila_glusterfs_share_layout:
-# The default option of nfs server type is 'Gluster'
-#manila_glusterfs_nfs_server_type:
-
-# Volume layout Options (required)
-# If the glusterfs server requires remote ssh, then you need to fill
-# in 'manila_glusterfs_servers', ssh user 'manila_glusterfs_ssh_user', and ssh password
-# 'manila_glusterfs_ssh_password'.
-# 'manila_glusterfs_servers' value List of GlusterFS servers which provide volumes,
-# the format is for example:
-#   - 10.0.1.1
-#   - 10.0.1.2
-#manila_glusterfs_servers:
-#manila_glusterfs_ssh_user:
-#manila_glusterfs_ssh_password:
-# Used to filter GlusterFS volumes for share creation.
-# Examples: manila-share-volume-\\d+$, manila-share-volume-#{size}G-\\d+$;
-#manila_glusterfs_volume_pattern:
-
-# Directory layout Options
-# If the glusterfs server is on the local node of the manila share,
-# it’s of the format <glustervolserver>:/<glustervolid>
-# If the glusterfs server is on a remote node,
-# it’s of the format <username>@<glustervolserver>:/<glustervolid> ,
-# and define 'manila_glusterfs_ssh_password'
-#manila_glusterfs_target:
-#manila_glusterfs_mount_point_base:
 
 ################################
 # Swift - Object Storage Options
@@ -700,6 +647,19 @@ workaround_ansible_issue_8743: yes
 # Rolling upgrade were enable by default
 #swift_enable_rolling_upgrade: "yes"
 
+
+################################################
+# Tempest - The OpenStack Integration Test Suite
+################################################
+# The following values must be set when enabling tempest
+#tempest_image_id:
+#tempest_flavor_ref_id:
+#tempest_public_network_id:
+#tempest_floating_network_name:
+
+# tempest_image_alt_id: "{{ tempest_image_id }}"
+# tempest_flavor_ref_alt_id: "{{ tempest_flavor_ref_id }}"
+
 ###################################
 # VMware - OpenStack VMware support
 ###################################
@@ -718,39 +678,15 @@ workaround_ansible_issue_8743: yes
 #enable_prometheus_mysqld_exporter: "{{ enable_mariadb | bool }}"
 #enable_prometheus_node_exporter: "{{ enable_prometheus | bool }}"
 #enable_prometheus_cadvisor: "{{ enable_prometheus | bool }}"
-#enable_prometheus_fluentd_integration: "{{ enable_prometheus | bool and enable fluentd | bool }}"
 #enable_prometheus_memcached: "{{ enable_prometheus | bool }}"
 #enable_prometheus_alertmanager: "{{ enable_prometheus | bool }}"
-#enable_prometheus_alertmanager_external: "{{ enable_prometheus_alertmanager | bool }}"
 #enable_prometheus_ceph_mgr_exporter: "no"
 #enable_prometheus_openstack_exporter: "{{ enable_prometheus | bool }}"
 #enable_prometheus_elasticsearch_exporter: "{{ enable_prometheus | bool and enable_elasticsearch | bool }}"
 #enable_prometheus_blackbox_exporter: "{{ enable_prometheus | bool }}"
-#enable_prometheus_libvirt_exporter: "{{ enable_prometheus | bool and enable_nova | bool and nova_compute_virt_type in ['kvm', 'qemu'] }}"
-#enable_prometheus_etcd_integration: "{{ enable_prometheus | bool and enable_etcd | bool }}"
-#enable_prometheus_msteams: "no"
-
-# The labels to add to any time series or alerts when communicating with external systems (federation, remote storage, Alertmanager).
-# prometheus_external_labels:
-#   <labelname>: <labelvalue>
-# By default, prometheus_external_labels is empty
-#prometheus_external_labels:
 
 # List of extra parameters passed to prometheus. You can add as many to the list.
 #prometheus_cmdline_extras:
-
-# List of extra parameters passed to cAdvisor. By default system cgroups
-# and container labels are not exposed to reduce time series cardinality.
-#prometheus_cadvisor_cmdline_extras: "--docker_only --store_container_labels=false --disable_metrics=percpu,referenced_memory,cpu_topology,resctrl,udp,advtcp,sched,hugetlb,memory_numa,tcp,process"
-
-# Extra parameters passed to Prometheus exporters.
-#prometheus_blackbox_exporter_cmdline_extras:
-#prometheus_elasticsearch_exporter_cmdline_extras:
-#prometheus_haproxy_exporter_cmdline_extras:
-#prometheus_memcached_exporter_cmdline_extras:
-#prometheus_mysqld_exporter_cmdline_extras:
-#prometheus_node_exporter_cmdline_extras:
-#prometheus_openstack_exporter_cmdline_extras:
 
 # Example of setting endpoints for prometheus ceph mgr exporter.
 # You should add all ceph mgr's in your external ceph deployment.
@@ -777,7 +713,7 @@ workaround_ansible_issue_8743: yes
 ##########################################
 # Octavia - openstack loadbalancer Options
 ##########################################
-# Whether to run Kolla Ansible's automatic configuration for Octavia.
+# Whether to run Kolla-Ansible's automatic configuration for Octavia.
 # NOTE: if you upgrade from Ussuri, you must set `octavia_auto_configure` to `no`
 # and keep your other Octavia config like before.
 #octavia_auto_configure: yes
@@ -856,10 +792,3 @@ workaround_ansible_issue_8743: yes
 #octavia_amp_boot_network_list:
 #octavia_amp_secgroup_list:
 #octavia_amp_flavor_id:
-
-####################
-# Corosync options
-####################
-
-# this is UDP port
-#hacluster_corosync_port: 5405

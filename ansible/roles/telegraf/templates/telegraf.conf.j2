@@ -47,7 +47,11 @@
 [[inputs.system]]
 [[inputs.net]]
   interfaces = []
-{% if inventory_hostname in groups['loadbalancer'] and enable_haproxy | bool %}
+{% if inventory_hostname in groups['chrony'] and enable_chrony | bool %}
+[[inputs.chrony]]
+  dns_lookup = false
+{% endif %}
+{% if inventory_hostname in groups['haproxy'] and enable_haproxy | bool %}
 [[inputs.haproxy]]
   servers = ["{{ haproxy_proto }}://{{ haproxy_user }}:{{ haproxy_password }}@{{ api_interface_address | put_address_in_context('url') }}:{{ haproxy_stats_port }}"]
 {% endif %}
@@ -55,9 +59,9 @@
 [[inputs.memcached]]
   servers = ["{{ api_interface_address | put_address_in_context('url') }}:{{ memcached_port }}"]
 {% endif %}
-{% if inventory_hostname in groups['opensearch'] and enable_opensearch | bool %}
+{% if inventory_hostname in groups['elasticsearch'] and enable_elasticsearch | bool %}
 [[inputs.elasticsearch]]
-  servers = ["{{ opensearch_proto }}://{{ api_interface_address | put_address_in_context('url') }}:{{ opensearch_port }}"]
+  servers = ["{{ elasticsearch_proto }}://{{ api_interface_address | put_address_in_context('url') }}:{{ elasticsearch_port }}"]
   local = true
   cluster_health = true
 {% endif %}
@@ -76,6 +80,14 @@
 {% if inventory_hostname in groups['redis'] and enable_redis | bool %}
 [[inputs.redis]]
   servers = ["tcp://:{{ redis_master_password }}@{{ api_interface_address | put_address_in_context('url') }}:{{ redis_port }}"]
+{% endif %}
+{% if inventory_hostname in groups['zookeeper'] and enable_zookeeper | bool %}
+[[inputs.zookeeper]]
+  servers = ["{{ api_interface_address | put_address_in_context('url') }}:{{ zookeeper_client_port }}"]
+{% endif %}
+{% if inventory_hostname in groups['kafka'] and enable_kafka | bool %}
+[[inputs.kafka_consumer]]
+  brokers = ["{{ api_interface_address | put_address_in_context('url') }}:{{ kafka_port }}"]
 {% endif %}
 {% if inventory_hostname in groups['mariadb'] and (enable_mariadb or enable_external_mariadb_load_balancer) | bool %}
 [[inputs.mysql]]

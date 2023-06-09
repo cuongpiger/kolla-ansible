@@ -27,6 +27,15 @@ Optionally tacker supports the following services and features.
 * Networking-sfc
 * Opendaylight
 
+Compatibility
+~~~~~~~~~~~~~
+
+Tacker is supported by the following distros and install_types.
+
+* CentOS and RHEL: Source and binary images.
+
+* Debian and Ubuntu: Only source images.
+
 Preparation and Deployment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

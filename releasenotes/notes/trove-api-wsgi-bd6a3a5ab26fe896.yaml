@@ -1,7 +1,0 @@
----
-features:
-  - |
-    Switch ``trove-api`` to WSGI running under Apache.
-  - |
-    Added configuration options to enable backend TLS encryption from HAProxy
-    to the Trove service.

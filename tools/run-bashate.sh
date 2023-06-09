@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # Ignore E006 -- line length greater than 80 char
 # Error on E005 -- file does not begin with #! or have .sh prefix

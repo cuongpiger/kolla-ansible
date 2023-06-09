@@ -7,7 +7,6 @@ gnocchi_services:
     image: "{{ gnocchi_api_image_full }}"
     volumes: "{{ gnocchi_api_default_volumes + gnocchi_api_extra_volumes }}"
     dimensions: "{{ gnocchi_api_dimensions }}"
-    healthcheck: "{{ gnocchi_api_healthcheck }}"
     haproxy:
       gnocchi_api:
         enabled: "{{ enable_gnocchi }}"
@@ -26,7 +25,6 @@ gnocchi_services:
     image: "{{ gnocchi_metricd_image_full }}"
     volumes: "{{ gnocchi_metricd_default_volumes + gnocchi_metricd_extra_volumes }}"
     dimensions: "{{ gnocchi_metricd_dimensions }}"
-    healthcheck: "{{ gnocchi_metricd_healthcheck }}"
   gnocchi-statsd:
     container_name: gnocchi_statsd
     group: gnocchi-statsd
@@ -34,14 +32,7 @@ gnocchi_services:
     image: "{{ gnocchi_statsd_image_full }}"
     volumes: "{{ gnocchi_statsd_default_volumes + gnocchi_statsd_extra_volumes }}"
     dimensions: "{{ gnocchi_statsd_dimensions }}"
-    healthcheck: "{{ gnocchi_statsd_healthcheck }}"
 
-####################
-# Config Validate
-####################
-gnocchi_config_validation:
-  - generator: "/gnocchi/gnocchi/gnocchi-config-generator.conf"
-    config: "/etc/gnocchi/gnocchi.conf"
 
 ####################
 # Swift
@@ -57,79 +48,28 @@ gnocchi_database_name: "gnocchi"
 gnocchi_database_user: "{% if use_preconfigured_databases | bool and use_common_mariadb_user | bool %}{{ database_user }}{% else %}gnocchi{% endif %}"
 gnocchi_database_address: "{{ database_address | put_address_in_context('url') }}:{{ database_port }}"
 
-####################
-# Database sharding
-####################
-gnocchi_database_shard_root_user: "{% if enable_proxysql | bool %}root_shard_{{ gnocchi_database_shard_id }}{% else %}{{ database_user }}{% endif %}"
-gnocchi_database_shard_id: "{{ mariadb_default_database_shard_id | int }}"
-gnocchi_database_shard:
-  users:
-    - user: "{{ gnocchi_database_user }}"
-      password: "{{ gnocchi_database_password }}"
-  rules:
-    - schema: "{{ gnocchi_database_name }}"
-      shard_id: "{{ gnocchi_database_shard_id }}"
-
 
 ####################
 # Docker
 ####################
+gnocchi_install_type: "{{ kolla_install_type }}"
 gnocchi_tag: "{{ openstack_tag }}"
 
-gnocchi_api_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/gnocchi-api"
+gnocchi_api_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ gnocchi_install_type }}-gnocchi-api"
 gnocchi_api_tag: "{{ gnocchi_tag }}"
 gnocchi_api_image_full: "{{ gnocchi_api_image }}:{{ gnocchi_api_tag }}"
 
-gnocchi_statsd_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/gnocchi-statsd"
+gnocchi_statsd_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ gnocchi_install_type }}-gnocchi-statsd"
 gnocchi_statsd_tag: "{{ gnocchi_tag }}"
 gnocchi_statsd_image_full: "{{ gnocchi_statsd_image }}:{{ gnocchi_statsd_tag }}"
 
-gnocchi_metricd_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/gnocchi-metricd"
+gnocchi_metricd_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ gnocchi_install_type }}-gnocchi-metricd"
 gnocchi_metricd_tag: "{{ gnocchi_tag }}"
 gnocchi_metricd_image_full: "{{ gnocchi_metricd_image }}:{{ gnocchi_metricd_tag }}"
 
 gnocchi_api_dimensions: "{{ default_container_dimensions }}"
 gnocchi_metricd_dimensions: "{{ default_container_dimensions }}"
 gnocchi_statsd_dimensions: "{{ default_container_dimensions }}"
-
-gnocchi_api_enable_healthchecks: "{{ enable_container_healthchecks }}"
-gnocchi_api_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
-gnocchi_api_healthcheck_retries: "{{ default_container_healthcheck_retries }}"
-gnocchi_api_healthcheck_start_period: "{{ default_container_healthcheck_start_period }}"
-gnocchi_api_healthcheck_test: ["CMD-SHELL", "healthcheck_curl http://{{ api_interface_address | put_address_in_context('url') }}:{{ gnocchi_api_listen_port }}"]
-gnocchi_api_healthcheck_timeout: "{{ default_container_healthcheck_timeout }}"
-gnocchi_api_healthcheck:
-  interval: "{{ gnocchi_api_healthcheck_interval }}"
-  retries: "{{ gnocchi_api_healthcheck_retries }}"
-  start_period: "{{ gnocchi_api_healthcheck_start_period }}"
-  test: "{% if gnocchi_api_enable_healthchecks | bool %}{{ gnocchi_api_healthcheck_test }}{% else %}NONE{% endif %}"
-  timeout: "{{ gnocchi_api_healthcheck_timeout }}"
-
-gnocchi_metricd_enable_healthchecks: "{{ enable_container_healthchecks }}"
-gnocchi_metricd_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
-gnocchi_metricd_healthcheck_retries: "{{ default_container_healthcheck_retries }}"
-gnocchi_metricd_healthcheck_start_period: "{{ default_container_healthcheck_start_period }}"
-gnocchi_metricd_healthcheck_test: ["CMD-SHELL", "healthcheck_port gnocchi-metricd {{ database_port }}"]
-gnocchi_metricd_healthcheck_timeout: "{{ default_container_healthcheck_timeout }}"
-gnocchi_metricd_healthcheck:
-  interval: "{{ gnocchi_metricd_healthcheck_interval }}"
-  retries: "{{ gnocchi_metricd_healthcheck_retries }}"
-  start_period: "{{ gnocchi_metricd_healthcheck_start_period }}"
-  test: "{% if gnocchi_metricd_enable_healthchecks | bool %}{{ gnocchi_metricd_healthcheck_test }}{% else %}NONE{% endif %}"
-  timeout: "{{ gnocchi_metricd_healthcheck_timeout }}"
-
-gnocchi_statsd_enable_healthchecks: "{{ enable_container_healthchecks }}"
-gnocchi_statsd_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
-gnocchi_statsd_healthcheck_retries: "{{ default_container_healthcheck_retries }}"
-gnocchi_statsd_healthcheck_start_period: "{{ default_container_healthcheck_start_period }}"
-gnocchi_statsd_healthcheck_test: ["CMD-SHELL", "healthcheck_port gnocchi-statsd {{ database_port }}"]
-gnocchi_statsd_healthcheck_timeout: "{{ default_container_healthcheck_timeout }}"
-gnocchi_statsd_healthcheck:
-  interval: "{{ gnocchi_statsd_healthcheck_interval }}"
-  retries: "{{ gnocchi_statsd_healthcheck_retries }}"
-  start_period: "{{ gnocchi_statsd_healthcheck_start_period }}"
-  test: "{% if gnocchi_statsd_enable_healthchecks | bool %}{{ gnocchi_statsd_healthcheck_test }}{% else %}NONE{% endif %}"
-  timeout: "{{ gnocchi_statsd_healthcheck_timeout }}"
 
 gnocchi_api_default_volumes:
   - "{{ node_config_directory }}/gnocchi-api/:{{ container_config_directory }}/:ro"
@@ -160,6 +100,7 @@ gnocchi_statsd_extra_volumes: "{{ gnocchi_extra_volumes }}"
 ####################
 # OpenStack
 ####################
+gnocchi_admin_endpoint: "{{ admin_protocol }}://{{ gnocchi_internal_fqdn | put_address_in_context('url') }}:{{ gnocchi_api_port }}"
 gnocchi_internal_endpoint: "{{ internal_protocol }}://{{ gnocchi_internal_fqdn | put_address_in_context('url') }}:{{ gnocchi_api_port }}"
 gnocchi_public_endpoint: "{{ public_protocol }}://{{ gnocchi_external_fqdn | put_address_in_context('url') }}:{{ gnocchi_api_port }}"
 
@@ -171,8 +112,6 @@ gnocchi_keystone_user: "gnocchi"
 
 openstack_gnocchi_auth: "{{ openstack_auth }}"
 
-gnocchi_api_workers: "{{ openstack_service_workers }}"
-
 ####################
 # Keystone
 ####################
@@ -181,6 +120,7 @@ gnocchi_ks_services:
     type: "metric"
     description: "OpenStack Metric Service"
     endpoints:
+      - {'interface': 'admin', 'url': '{{ gnocchi_admin_endpoint }}'}
       - {'interface': 'internal', 'url': '{{ gnocchi_internal_endpoint }}'}
       - {'interface': 'public', 'url': '{{ gnocchi_public_endpoint }}'}
 

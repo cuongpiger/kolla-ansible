@@ -1,12 +1,11 @@
 {% set masakari_log_dir = '/var/log/kolla/masakari' %}
-{% set binary_path = '/var/lib/kolla/venv/bin' %}
+{% set binary_path = '/usr/bin' if masakari_install_type == 'binary' else '/var/lib/kolla/venv/bin' %}
 
 Listen {{ api_interface_address | put_address_in_context('url') }}:{{ masakari_api_port }}
 
 ServerSignature Off
 ServerTokens Prod
 TraceEnable off
-TimeOut {{ kolla_httpd_timeout }}
 KeepAliveTimeout {{ kolla_httpd_keep_alive }}
 
 ErrorLog "{{ masakari_log_dir }}/apache-error.log"
@@ -31,7 +30,7 @@ LogLevel info
   LogFormat "%{X-Forwarded-For}i %l %u %t \"%r\" %>s %b %D \"%{Referer}i\" \"%{User-Agent}i\"" logformat
   CustomLog "{{ masakari_log_dir }}/masakari_wsgi_access.log" logformat
   WSGIApplicationGroup %{GLOBAL}
-  WSGIDaemonProcess masakari group=masakari processes={{ masakari_api_workers }} threads=1 user=masakari
+  WSGIDaemonProcess masakari group=masakari processes={{ openstack_service_workers }} threads=1 user=masakari
   WSGIProcessGroup masakari
   WSGIScriptAlias / "{{ binary_path }}/masakari-wsgi"
 </VirtualHost>

@@ -56,47 +56,28 @@ heat_services:
     healthcheck: "{{ heat_engine_healthcheck }}"
 
 ####################
-# Config Validate
-####################
-heat_config_validation:
-  - generator: "/heat/config-generator.conf"
-    config: "/etc/heat/heat.conf"
-
-####################
 # Database
 ####################
 heat_database_name: "heat"
 heat_database_user: "{% if use_preconfigured_databases | bool and use_common_mariadb_user | bool %}{{ database_user }}{% else %}heat{% endif %}"
 heat_database_address: "{{ database_address | put_address_in_context('url') }}:{{ database_port }}"
 
-####################
-# Database sharding
-####################
-heat_database_shard_root_user: "{% if enable_proxysql | bool %}root_shard_{{ heat_database_shard_id }}{% else %}{{ database_user }}{% endif %}"
-heat_database_shard_id: "{{ mariadb_default_database_shard_id | int }}"
-heat_database_shard:
-  users:
-    - user: "{{ heat_database_user }}"
-      password: "{{ heat_database_password }}"
-  rules:
-    - schema: "{{ heat_database_name }}"
-      shard_id: "{{ heat_database_shard_id }}"
-
 
 ####################
 # Docker
 ####################
-heat_tag: "{{ openstack_tag }}"
+heat_install_type: "{{ kolla_install_type }}"
+heat_tag: "train"
 
-heat_api_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/heat-api"
+heat_api_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ heat_install_type }}-heat-api"
 heat_api_tag: "{{ heat_tag }}"
 heat_api_image_full: "{{ heat_api_image }}:{{ heat_api_tag }}"
 
-heat_api_cfn_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/heat-api-cfn"
+heat_api_cfn_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ heat_install_type }}-heat-api-cfn"
 heat_api_cfn_tag: "{{ heat_tag }}"
 heat_api_cfn_image_full: "{{ heat_api_cfn_image }}:{{ heat_api_cfn_tag }}"
 
-heat_engine_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/heat-engine"
+heat_engine_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ heat_install_type }}-heat-engine"
 heat_engine_tag: "{{ heat_tag }}"
 heat_engine_image_full: "{{ heat_engine_image }}:{{ heat_engine_tag }}"
 
@@ -108,7 +89,7 @@ heat_api_enable_healthchecks: "{{ enable_container_healthchecks }}"
 heat_api_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
 heat_api_healthcheck_retries: "{{ default_container_healthcheck_retries }}"
 heat_api_healthcheck_start_period: "{{ default_container_healthcheck_start_period }}"
-heat_api_healthcheck_test: ["CMD-SHELL", "healthcheck_curl {{ 'https' if heat_enable_tls_backend | bool else 'http' }}://{{ api_interface_address | put_address_in_context('url') }}:{{ heat_api_listen_port }}"]
+heat_api_healthcheck_test: ["CMD-SHELL", "healthcheck_curl {{ 'https' if heat_enable_tls_backend | bool else 'http' }}://{{ api_interface_address |  put_address_in_context('url') }}:{{ heat_api_listen_port }}"]
 heat_api_healthcheck_timeout: "{{ default_container_healthcheck_timeout }}"
 heat_api_healthcheck:
   interval: "{{ heat_api_healthcheck_interval }}"
@@ -121,7 +102,7 @@ heat_api_cfn_enable_healthchecks: "{{ enable_container_healthchecks }}"
 heat_api_cfn_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
 heat_api_cfn_healthcheck_retries: "{{ default_container_healthcheck_retries }}"
 heat_api_cfn_healthcheck_start_period: "{{ default_container_healthcheck_start_period }}"
-heat_api_cfn_healthcheck_test: ["CMD-SHELL", "healthcheck_curl {{ 'https' if heat_enable_tls_backend | bool else 'http' }}://{{ api_interface_address | put_address_in_context('url') }}:{{ heat_api_cfn_listen_port }}"]
+heat_api_cfn_healthcheck_test: ["CMD-SHELL", "healthcheck_curl {{ 'https' if heat_enable_tls_backend | bool else 'http' }}://{{ api_interface_address |  put_address_in_context('url') }}:{{ heat_api_cfn_listen_port }}"]
 heat_api_cfn_healthcheck_timeout: "{{ default_container_healthcheck_timeout }}"
 heat_api_cfn_healthcheck:
   interval: "{{ heat_api_cfn_healthcheck_interval }}"
@@ -170,11 +151,13 @@ heat_engine_extra_volumes: "{{ heat_extra_volumes }}"
 ####################
 # OpenStack
 ####################
+heat_admin_endpoint: "{{ admin_protocol }}://{{ heat_internal_fqdn | put_address_in_context('url') }}:{{ heat_api_port }}/v1/%(tenant_id)s"
 heat_internal_endpoint: "{{ internal_protocol }}://{{ heat_internal_fqdn | put_address_in_context('url') }}:{{ heat_api_port }}/v1/%(tenant_id)s"
 heat_public_endpoint: "{{ public_protocol }}://{{ heat_external_fqdn | put_address_in_context('url') }}:{{ heat_api_port }}/v1/%(tenant_id)s"
 
 heat_cfn_public_base_endpoint: "{{ public_protocol }}://{{ heat_cfn_external_fqdn | put_address_in_context('url') }}:{{ heat_api_cfn_port }}"
 
+heat_cfn_admin_endpoint: "{{ admin_protocol }}://{{ heat_cfn_internal_fqdn | put_address_in_context('url') }}:{{ heat_api_cfn_port }}/v1"
 heat_cfn_internal_endpoint: "{{ internal_protocol }}://{{ heat_cfn_internal_fqdn | put_address_in_context('url') }}:{{ heat_api_cfn_port }}/v1"
 heat_cfn_public_endpoint: "{{ heat_cfn_public_base_endpoint }}/v1"
 
@@ -186,9 +169,6 @@ heat_stack_owner_role: "heat_stack_owner"
 
 openstack_heat_auth: "{{ openstack_auth }}"
 
-heat_api_cfn_workers: "{{ openstack_service_workers }}"
-heat_api_workers: "{{ openstack_service_workers }}"
-heat_engine_workers: "{{ openstack_service_workers }}"
 
 ####################
 # Kolla
@@ -215,12 +195,14 @@ heat_ks_services:
     type: "orchestration"
     description: "Orchestration"
     endpoints:
+      - {'interface': 'admin', 'url': '{{ heat_admin_endpoint }}'}
       - {'interface': 'internal', 'url': '{{ heat_internal_endpoint }}'}
       - {'interface': 'public', 'url': '{{ heat_public_endpoint }}'}
   - name: "heat-cfn"
     type: "cloudformation"
     description: "Orchestration"
     endpoints:
+      - {'interface': 'admin', 'url': '{{ heat_cfn_admin_endpoint }}'}
       - {'interface': 'internal', 'url': '{{ heat_cfn_internal_endpoint }}'}
       - {'interface': 'public', 'url': '{{ heat_cfn_public_endpoint }}'}
 

@@ -7,7 +7,6 @@ ceilometer_services:
     image: "{{ ceilometer_notification_image_full }}"
     volumes: "{{ ceilometer_notification_default_volumes + ceilometer_notification_extra_volumes }}"
     dimensions: "{{ ceilometer_notification_dimensions }}"
-    healthcheck: "{{ ceilometer_notification_healthcheck }}"
   ceilometer-central:
     container_name: ceilometer_central
     group: ceilometer-central
@@ -15,7 +14,6 @@ ceilometer_services:
     image: "{{ ceilometer_central_image_full }}"
     volumes: "{{ ceilometer_central_default_volumes + ceilometer_central_extra_volumes }}"
     dimensions: "{{ ceilometer_central_dimensions }}"
-    healthcheck: "{{ ceilometer_central_healthcheck }}"
   ceilometer-compute:
     container_name: ceilometer_compute
     group: ceilometer-compute
@@ -24,7 +22,6 @@ ceilometer_services:
     image: "{{ ceilometer_compute_image_full }}"
     volumes: "{{ ceilometer_compute_default_volumes + ceilometer_compute_extra_volumes }}"
     dimensions: "{{ ceilometer_compute_dimensions }}"
-    healthcheck: "{{ ceilometer_compute_healthcheck }}"
   ceilometer-ipmi:
     container_name: ceilometer_ipmi
     group: ceilometer-ipmi
@@ -32,33 +29,27 @@ ceilometer_services:
     image: "{{ ceilometer_ipmi_image_full }}"
     volumes: "{{ ceilometer_ipmi_default_volumes + ceilometer_ipmi_extra_volumes }}"
     dimensions: "{{ ceilometer_ipmi_dimensions }}"
-    healthcheck: "{{ ceilometer_ipmi_healthcheck }}"
 
-####################
-# Config Validate
-####################
-ceilometer_config_validation:
-  - generator: "/ceilometer/etc/ceilometer/ceilometer-config-generator.conf"
-    config: "/etc/ceilometer/ceilometer.conf"
 
 ####################
 # Docker
 ####################
+ceilometer_install_type: "{{ kolla_install_type }}"
 ceilometer_tag: "{{ openstack_tag }}"
 
-ceilometer_notification_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/ceilometer-notification"
+ceilometer_notification_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ ceilometer_install_type }}-ceilometer-notification"
 ceilometer_notification_tag: "{{ ceilometer_tag }}"
 ceilometer_notification_image_full: "{{ ceilometer_notification_image }}:{{ ceilometer_notification_tag }}"
 
-ceilometer_central_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/ceilometer-central"
+ceilometer_central_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ ceilometer_install_type }}-ceilometer-central"
 ceilometer_central_tag: "{{ ceilometer_tag }}"
 ceilometer_central_image_full: "{{ ceilometer_central_image }}:{{ ceilometer_central_tag }}"
 
-ceilometer_compute_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/ceilometer-compute"
+ceilometer_compute_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ ceilometer_install_type }}-ceilometer-compute"
 ceilometer_compute_tag: "{{ ceilometer_tag }}"
 ceilometer_compute_image_full: "{{ ceilometer_compute_image }}:{{ ceilometer_compute_tag }}"
 
-ceilometer_ipmi_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/ceilometer-ipmi"
+ceilometer_ipmi_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ ceilometer_install_type }}-ceilometer-ipmi"
 ceilometer_ipmi_tag: "{{ ceilometer_tag }}"
 ceilometer_ipmi_image_full: "{{ ceilometer_ipmi_image }}:{{ ceilometer_ipmi_tag }}"
 
@@ -66,58 +57,6 @@ ceilometer_notification_dimensions: "{{ default_container_dimensions }}"
 ceilometer_central_dimensions: "{{ default_container_dimensions }}"
 ceilometer_compute_dimensions: "{{ default_container_dimensions }}"
 ceilometer_ipmi_dimensions: "{{ default_container_dimensions }}"
-
-ceilometer_notification_enable_healthchecks: "{{ enable_container_healthchecks }}"
-ceilometer_notification_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
-ceilometer_notification_healthcheck_retries: "{{ default_container_healthcheck_retries }}"
-ceilometer_notification_healthcheck_start_period: "{{ default_container_healthcheck_start_period }}"
-ceilometer_notification_healthcheck_test: ["CMD-SHELL", "healthcheck_port ceilometer-agent-notification {{ om_rpc_port }}"]
-ceilometer_notification_healthcheck_timeout: "{{ default_container_healthcheck_timeout }}"
-ceilometer_notification_healthcheck:
-  interval: "{{ ceilometer_notification_healthcheck_interval }}"
-  retries: "{{ ceilometer_notification_healthcheck_retries }}"
-  start_period: "{{ ceilometer_notification_healthcheck_start_period }}"
-  test: "{% if ceilometer_notification_enable_healthchecks | bool %}{{ ceilometer_notification_healthcheck_test }}{% else %}NONE{% endif %}"
-  timeout: "{{ ceilometer_notification_healthcheck_timeout }}"
-
-ceilometer_central_enable_healthchecks: "{{ enable_container_healthchecks }}"
-ceilometer_central_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
-ceilometer_central_healthcheck_retries: "{{ default_container_healthcheck_retries }}"
-ceilometer_central_healthcheck_start_period: "{{ default_container_healthcheck_start_period }}"
-ceilometer_central_healthcheck_test: ["CMD-SHELL", "healthcheck_port ceilometer-polling {{ om_rpc_port }}"]
-ceilometer_central_healthcheck_timeout: "{{ default_container_healthcheck_timeout }}"
-ceilometer_central_healthcheck:
-  interval: "{{ ceilometer_central_healthcheck_interval }}"
-  retries: "{{ ceilometer_central_healthcheck_retries }}"
-  start_period: "{{ ceilometer_central_healthcheck_start_period }}"
-  test: "{% if ceilometer_central_enable_healthchecks | bool %}{{ ceilometer_central_healthcheck_test }}{% else %}NONE{% endif %}"
-  timeout: "{{ ceilometer_central_healthcheck_timeout }}"
-
-ceilometer_compute_enable_healthchecks: "{{ enable_container_healthchecks }}"
-ceilometer_compute_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
-ceilometer_compute_healthcheck_retries: "{{ default_container_healthcheck_retries }}"
-ceilometer_compute_healthcheck_start_period: "{{ default_container_healthcheck_start_period }}"
-ceilometer_compute_healthcheck_test: ["CMD-SHELL", "healthcheck_port ceilometer-polling {{ om_rpc_port }}"]
-ceilometer_compute_healthcheck_timeout: "{{ default_container_healthcheck_timeout }}"
-ceilometer_compute_healthcheck:
-  interval: "{{ ceilometer_compute_healthcheck_interval }}"
-  retries: "{{ ceilometer_compute_healthcheck_retries }}"
-  start_period: "{{ ceilometer_compute_healthcheck_start_period }}"
-  test: "{% if ceilometer_compute_enable_healthchecks | bool %}{{ ceilometer_compute_healthcheck_test }}{% else %}NONE{% endif %}"
-  timeout: "{{ ceilometer_compute_healthcheck_timeout }}"
-
-ceilometer_ipmi_enable_healthchecks: "{{ enable_container_healthchecks }}"
-ceilometer_ipmi_healthcheck_interval: "{{ default_container_healthcheck_interval }}"
-ceilometer_ipmi_healthcheck_retries: "{{ default_container_healthcheck_retries }}"
-ceilometer_ipmi_healthcheck_start_period: "{{ default_container_healthcheck_start_period }}"
-ceilometer_ipmi_healthcheck_test: ["CMD-SHELL", "healthcheck_port ceilometer-polling {{ om_rpc_port }}"]
-ceilometer_ipmi_healthcheck_timeout: "{{ default_container_healthcheck_timeout }}"
-ceilometer_ipmi_healthcheck:
-  interval: "{{ ceilometer_ipmi_healthcheck_interval }}"
-  retries: "{{ ceilometer_ipmi_healthcheck_retries }}"
-  start_period: "{{ ceilometer_ipmi_healthcheck_start_period }}"
-  test: "{% if ceilometer_ipmi_enable_healthchecks | bool %}{{ ceilometer_ipmi_healthcheck_test }}{% else %}NONE{% endif %}"
-  timeout: "{{ ceilometer_ipmi_healthcheck_timeout }}"
 
 ceilometer_notification_default_volumes:
   - "{{ node_config_directory }}/ceilometer-notification/:{{ container_config_directory }}/:ro"
@@ -139,7 +78,7 @@ ceilometer_compute_default_volumes:
   - "/run/:/run/:shared"
   - "ceilometer:/var/lib/ceilometer/"
   - "kolla_logs:/var/log/kolla/"
-  - "{{ ceilometer_libvirt_volume }}:/var/lib/libvirt"
+  - "nova_libvirt:/var/lib/libvirt"
   - "{{ kolla_dev_repos_directory ~ '/ceilometer/ceilometer:/var/lib/kolla/venv/lib/python' ~ distro_python_version ~ '/site-packages/ceilometer' if ceilometer_dev_mode | bool else '' }}"
 ceilometer_ipmi_default_volumes:
   - "{{ node_config_directory }}/ceilometer-ipmi/:{{ container_config_directory }}/:ro"
@@ -154,8 +93,6 @@ ceilometer_notification_extra_volumes: "{{ ceilometer_extra_volumes }}"
 ceilometer_central_extra_volumes: "{{ ceilometer_extra_volumes }}"
 ceilometer_compute_extra_volumes: "{{ ceilometer_extra_volumes }}"
 ceilometer_ipmi_extra_volumes: "{{ ceilometer_extra_volumes }}"
-
-ceilometer_libvirt_volume: "{{ 'nova_libvirt' if enable_nova_libvirt_container | bool else '/var/lib/libvirt' }}"
 
 ####################
 # OpenStack
@@ -189,18 +126,6 @@ ceilometer_ks_users:
 # Backend
 ####################
 
-ceilometer_database_type: "{{ 'gnocchi' if (enable_gnocchi | bool) else '' }}"
+ceilometer_database_type: "gnocchi"
 
 ceilometer_upgrade_params: ""
-
-####################
-# Pushgateway
-####################
-ceilometer_prometheus_pushgateway_host: "127.0.0.1"
-ceilometer_prometheus_pushgateway_port: "9091"
-## Options
-ceilometer_prometheus_pushgateway_options:
-#  timeout: 180
-#  max_retries: 5
-#  batch: no
-#  verify_ssl: no

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Copyright 2015 Sam Yaple
 # Copyright 2017 99Cloud Inc.
 #
@@ -121,10 +123,6 @@ class OverrideConfigParser(iniparser.BaseParser):
                             ws=self._whitespace,
                             value=value))
                     else:
-                        # We want additional values to be written out under the
-                        # first value with the same indentation, like this:
-                        # key = value1
-                        #       value2
                         indent_size = len(key) + len(self._whitespace) * 2 + 1
                         ws_indent = ' ' * indent_size
                         fp.write('{ws_indent}{value}\n'.format(
@@ -171,12 +169,12 @@ class ActionModule(action.ActionBase):
         del tmp  # not used
 
         sources = self._task.args.get('sources', None)
-        whitespace = self._task.args.get('whitespace', True)
 
         if not isinstance(sources, list):
             sources = [sources]
 
-        config = OverrideConfigParser(whitespace=whitespace)
+        config = OverrideConfigParser(
+            whitespace=self._task.args.get('whitespace', True))
 
         for source in sources:
             self.read_config(source, config)
@@ -213,11 +211,7 @@ class ActionModule(action.ActionBase):
                 loader=self._loader,
                 templar=self._templar,
                 shared_loader_obj=self._shared_loader_obj)
-            copy_result = copy_action.run(task_vars=task_vars)
-            copy_result['invocation']['module_args'].update({
-                'src': result_file, 'sources': sources,
-                'whitespace': whitespace})
-            result.update(copy_result)
+            result.update(copy_action.run(task_vars=task_vars))
         finally:
             shutil.rmtree(local_tempdir)
         return result

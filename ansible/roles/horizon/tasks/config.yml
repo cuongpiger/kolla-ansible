@@ -30,15 +30,19 @@
     - { name: "heat", enabled: "{{ enable_heat_horizon_policy_file }}" }
     - { name: "ironic", enabled: "{{ enable_horizon_ironic }}" }
     - { name: "keystone", enabled: "{{ enable_keystone_horizon_policy_file }}" }
+    - { name: "karbor", enabled: "{{ enable_horizon_karbor }}" }
     - { name: "magnum", enabled: "{{ enable_horizon_magnum }}" }
     - { name: "manila", enabled: "{{ enable_horizon_manila }}" }
     - { name: "masakari", enabled: "{{ enable_horizon_masakari }}" }
     - { name: "mistral", enabled: "{{ enable_horizon_mistral }}" }
+    - { name: "monasca", enabled: "{{ enable_horizon_monasca }}" }
     - { name: "murano", enabled: "{{ enable_horizon_murano }}" }
     - { name: "neutron", enabled: "{{ enable_neutron_horizon_policy_file }}" }
     - { name: "nova", enabled: "{{ enable_nova_horizon_policy_file }}" }
     - { name: "octavia", enabled: "{{ enable_horizon_octavia }}" }
+    - { name: "qinling", enabled: "{{ enable_horizon_qinling }}" }
     - { name: "sahara", enabled: "{{ enable_horizon_sahara }}" }
+    - { name: "searchlight", enabled: "{{ enable_horizon_searchlight }}" }
     - { name: "senlin", enabled: "{{ enable_horizon_senlin }}" }
     - { name: "solum", enabled: "{{ enable_horizon_solum }}" }
     - { name: "tacker", enabled: "{{ enable_horizon_tacker }}" }
@@ -125,22 +129,6 @@
     - horizon.enabled | bool
     - inventory_hostname in groups[horizon.group]
   with_items: "{{ custom_policy }}"
-  notify:
-    - Restart horizon container
-
-- name: Copying over custom themes
-  become: true
-  vars:
-    horizon: "{{ horizon_services['horizon'] }}"
-  copy:
-    src: "{{ node_custom_config }}/horizon/themes/{{ item.name }}"
-    dest: "{{ node_config_directory }}/horizon/themes/"
-    mode: 0660
-  when:
-    - horizon.enabled | bool
-    - inventory_hostname in groups[horizon.group]
-    - horizon_custom_themes | length > 0
-  with_items: "{{ horizon_custom_themes }}"
   notify:
     - Restart horizon container
 

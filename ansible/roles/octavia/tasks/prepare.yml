@@ -2,7 +2,6 @@
 - name: Create amphora flavor
   become: true
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: os_nova_flavor
     module_args:
       auth: "{{ octavia_user_auth }}"
@@ -26,7 +25,6 @@
 - name: Create nova keypair for amphora
   become: True
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: os_keypair
     module_args:
       auth: "{{ octavia_user_auth }}"
@@ -42,7 +40,6 @@
 - name: Get {{ octavia_service_auth_project }} project id
   become: True
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: os_project_info
     module_args:
       auth: "{{ octavia_user_auth }}"
@@ -57,7 +54,6 @@
 - name: Create security groups for octavia
   become: true
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: os_security_group
     module_args:
       auth: "{{ octavia_user_auth }}"
@@ -69,7 +65,6 @@
   loop: "{{ octavia_amp_security_groups.values() | list }}"
   loop_control:
     label: "{{ item.name }}"
-  when: item.enabled | bool
   run_once: True
   delegate_to: "{{ groups['octavia-api'][0] }}"
   register: sec_grp_info
@@ -77,7 +72,6 @@
 - name: Add rules for security groups
   become: true
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: os_security_group_rule
     module_args:
       auth: "{{ octavia_user_auth }}"
@@ -91,14 +85,12 @@
   with_subelements:
     - "{{ octavia_amp_security_groups }}"
     - rules
-  when: item.0.enabled | bool
   run_once: True
   delegate_to: "{{ groups['octavia-api'][0] }}"
 
 - name: Create loadbalancer management network
   become: true
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: os_network
     module_args:
       auth: "{{ octavia_user_auth }}"
@@ -120,7 +112,6 @@
 - name: Create loadbalancer management subnet
   become: true
   kolla_toolbox:
-    container_engine: "{{ kolla_container_engine }}"
     module_name: os_subnet
     module_args:
       auth: "{{ octavia_user_auth }}"

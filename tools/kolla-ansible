@@ -1,27 +1,13 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # This script can be used to interact with kolla via ansible.
 
-set -o errexit
-
-# do not use _PYTHON_BIN directly, use $(get_python_bin) instead
-_PYTHON_BIN=""
-
-ANSIBLE_VERSION_MIN=2.12
-ANSIBLE_VERSION_MAX=2.13
-
-function get_python_bin {
-    if [ -n "$_PYTHON_BIN" ]; then
-      echo -n "$_PYTHON_BIN"
-      return
-    fi
-
+function check_environment_coherence {
     local ansible_path
     ansible_path=$(which ansible)
 
     if [[ $? -ne 0 ]]; then
         echo "ERROR: Ansible is not installed in the current (virtual) environment." >&2
-        echo "Ansible version should be between $ANSIBLE_VERSION_MIN and $ANSIBLE_VERSION_MAX." >&2
         exit 1
     fi
 
@@ -33,14 +19,9 @@ function get_python_bin {
         exit 1
     fi
 
-    # NOTE(yoctozepto): may have multiple parts
-    _PYTHON_BIN=${ansible_shebang_line#\#\!}
-    echo -n "$_PYTHON_BIN"
-}
-
-function check_environment_coherence {
     local ansible_python_cmdline
-    ansible_python_cmdline=$(get_python_bin)
+    # NOTE(yoctozepto): may have multiple parts
+    ansible_python_cmdline=${ansible_shebang_line#\#\!}
     ansible_python_version=$($ansible_python_cmdline -c 'import sys; print(str(sys.version_info[0])+"."+str(sys.version_info[1]))')
 
     if ! $ansible_python_cmdline --version &>/dev/null; then
@@ -56,7 +37,7 @@ function check_environment_coherence {
         exit 1
     fi
 
-    local ansible_full_version
+    local ansible_version_output
     ansible_full_version=$($ansible_python_cmdline -c 'import ansible; print(ansible.__version__)')
 
     if [[ $? -ne 0 ]]; then
@@ -74,6 +55,8 @@ function check_environment_coherence {
         exit 1
     fi
 
+    local ANSIBLE_VERSION_MIN=2.9
+    local ANSIBLE_VERSION_MAX=2.9
 
     if [[ $(printf "%s\n" "$ANSIBLE_VERSION_MIN" "$ANSIBLE_VERSION_MAX" "$ansible_version" | sort -V | head -n1) != "$ANSIBLE_VERSION_MIN" ]] ||
        [[ $(printf "%s\n" "$ANSIBLE_VERSION_MIN" "$ANSIBLE_VERSION_MAX" "$ansible_version" | sort -V | tail -n1) != "$ANSIBLE_VERSION_MAX" ]]; then
@@ -128,15 +111,6 @@ function find_base_dir {
     fi
 }
 
-function install_deps {
-    echo "Installing Ansible Galaxy dependencies"
-    ansible-galaxy collection install -r ${BASEDIR}/requirements.yml --force
-    if [[ $? -ne 0 ]]; then
-        echo "ERROR: Failed to install Ansible Galaxy dependencies" >&2
-        exit 1
-    fi
-}
-
 function process_cmd {
     echo "$ACTION : $CMD"
     $CMD
@@ -151,8 +125,7 @@ function usage {
 Usage: $0 COMMAND [options]
 
 Options:
-    --inventory, -i <inventory_path>   Specify path to ansible inventory file. \
-Can be specified multiple times to pass multiple inventories.
+    --inventory, -i <inventory_path>   Specify path to ansible inventory file
     --playbook, -p <playbook_path>     Specify path to ansible playbook file
     --configdir <config_path>          Specify path to directory with globals.yml
     --key -k <key_path>                Specify path to ansible vault keyfile
@@ -166,22 +139,18 @@ Can be specified multiple times to pass multiple inventories.
     --vault-id <@prompt or path>       Specify @prompt or password file (Ansible >=  2.4)
     --ask-vault-pass                   Ask for vault password
     --vault-password-file <path>       Specify password file for vault decrypt
-    --check, -C                        Don't make any changes and try to predict some of the changes that may occur instead
-    --diff, -D                         Show differences in ansible-playbook changed tasks
     --verbose, -v                      Increase verbosity of ansible-playbook
-    --version                          Show version
 
 Environment variables:
     EXTRA_OPTS                         Additional arguments to pass to ansible-playbook
 
 Commands:
-    install-deps         Install Ansible Galaxy dependencies
     prechecks            Do pre-deployment checks for hosts
+    check                Do post-deployment smoke tests
     mariadb_recovery     Recover a completely stopped mariadb cluster
     mariadb_backup       Take a backup of MariaDB databases
                              --full (default)
                              --incremental
-    monasca_cleanup      Remove unused containers for the Monasca service
     bootstrap-servers    Bootstrap servers with kolla deploy dependencies
     destroy              Destroy Kolla containers, volumes and host configuration
                              --include-images to also destroy Kolla images
@@ -190,7 +159,6 @@ Commands:
     deploy-bifrost       Deploy and start bifrost container
     deploy-servers       Enroll and deploy servers with bifrost
     deploy-containers    Only deploy and start containers (no config updates or bootstrapping)
-    gather-facts         Gather Ansible facts
     post-deploy          Do post deploy on deploy node
     pull                 Pull all images for containers (only pulls, no running container changes)
     reconfigure          Reconfigure OpenStack service
@@ -200,9 +168,7 @@ Commands:
     upgrade              Upgrades existing OpenStack Environment
     upgrade-bifrost      Upgrades an existing bifrost container
     genconfig            Generate configuration files for enabled OpenStack services
-    validate-config      Validate configuration files for enabled OpenStack services
     prune-images         Prune orphaned Kolla images
-    nova-libvirt-cleanup Clean up disabled nova_libvirt containers
 EOF
 }
 
@@ -222,22 +188,17 @@ cat <<EOF
 --vault-id
 --ask-vault-pass
 --vault-password-file
---check -C
---diff -D
 --verbose -v
---version
-install-deps
 prechecks
+check
 mariadb_recovery
 mariadb_backup
-monasca_cleanup
 bootstrap-servers
 destroy
 deploy
 deploy-bifrost
 deploy-containers
 deploy-servers
-gather-facts
 post-deploy
 pull
 reconfigure
@@ -247,23 +208,14 @@ octavia-certificates
 upgrade
 upgrade-bifrost
 genconfig
-validate-config
 prune-images
-nova-libvirt-cleanup
 EOF
-}
-
-function version {
-    local python_bin
-    python_bin=$(get_python_bin)
-
-    $python_bin -c 'from kolla_ansible.version import version_info; print(version_info)'
 }
 
 check_environment_coherence
 
-SHORT_OPTS="hi:p:t:k:e:CD:v"
-LONG_OPTS="help,version,inventory:,playbook:,skip-tags:,tags:,key:,extra:,check,diff,verbose,configdir:,passwords:,limit:,forks:,vault-id:,ask-vault-pass,vault-password-file:,yes-i-really-really-mean-it,include-images,include-dev:,full,incremental"
+SHORT_OPTS="hi:p:t:k:e:v"
+LONG_OPTS="help,inventory:,playbook:,skip-tags:,tags:,key:,extra:,verbose,configdir:,passwords:,limit:,forks:,vault-id:,ask-vault-pass,vault-password-file:,yes-i-really-really-mean-it,include-images,include-dev:,full,incremental"
 
 RAW_ARGS="$*"
 ARGS=$(getopt -o "${SHORT_OPTS}" -l "${LONG_OPTS}" --name "$0" -- "$@") || { usage >&2; exit 2; }
@@ -284,13 +236,12 @@ BACKUP_TYPE="full"
 # Serial is not recommended and disabled by default. Users can enable it by
 # configuring ANSIBLE_SERIAL variable.
 ANSIBLE_SERIAL=${ANSIBLE_SERIAL:-0}
-INVENTORIES=()
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
 
     (--inventory|-i)
-            INVENTORIES+=("$2")
+            INVENTORY="$2"
             shift 2
             ;;
 
@@ -307,16 +258,6 @@ while [ "$#" -gt 0 ]; do
     (--tags|-t)
             EXTRA_OPTS="$EXTRA_OPTS --tags $2"
             shift 2
-            ;;
-
-    (--check|-C)
-            EXTRA_OPTS="$EXTRA_OPTS --check"
-            shift 1
-            ;;
-
-    (--diff|-D)
-            EXTRA_OPTS="$EXTRA_OPTS --diff"
-            shift 1
             ;;
 
     (--verbose|-v)
@@ -398,13 +339,9 @@ while [ "$#" -gt 0 ]; do
             shift 1
             ;;
 
-    (--version)
-            version
-            exit 0
-            ;;
-
     (--help|-h)
             usage
+            shift
             exit 0
             ;;
 
@@ -422,13 +359,13 @@ done
 
 case "$1" in
 
-(install-deps)
-        install_deps
-        exit 0
-        ;;
 (prechecks)
         ACTION="Pre-deployment checking"
         EXTRA_OPTS="$EXTRA_OPTS -e kolla_action=precheck"
+        ;;
+(check)
+        ACTION="Post-deployment checking"
+        EXTRA_OPTS="$EXTRA_OPTS -e kolla_action=check"
         ;;
 (mariadb_recovery)
         ACTION="Attempting to restart mariadb cluster"
@@ -439,11 +376,6 @@ case "$1" in
         ACTION="Backup MariaDB databases"
         EXTRA_OPTS="$EXTRA_OPTS -e kolla_action=backup -e mariadb_backup_type=${BACKUP_TYPE}"
         PLAYBOOK="${BASEDIR}/ansible/mariadb_backup.yml"
-        ;;
-(monasca_cleanup)
-        ACTION="Cleanup unused Monasca services"
-        EXTRA_OPTS="$EXTRA_OPTS -e kolla_action=cleanup"
-        PLAYBOOK="${BASEDIR}/ansible/monasca_cleanup.yml"
         ;;
 (destroy)
         ACTION="Destroy Kolla containers, volumes and host configuration"
@@ -486,10 +418,6 @@ EOF
         ACTION="Deploying servers with bifrost"
         PLAYBOOK="${BASEDIR}/ansible/bifrost.yml"
         EXTRA_OPTS="$EXTRA_OPTS -e kolla_action=deploy-servers"
-        ;;
-(gather-facts)
-        ACTION="Gathering Ansible facts"
-        PLAYBOOK="${BASEDIR}/ansible/gather-facts.yml"
         ;;
 (post-deploy)
         ACTION="Post-Deploying Playbooks"
@@ -537,10 +465,6 @@ EOF
         ACTION="Generate configuration files for enabled OpenStack services"
         EXTRA_OPTS="$EXTRA_OPTS -e kolla_action=config"
         ;;
-(validate-config)
-        ACTION="Validate configuration files for enabled OpenStack services"
-        EXTRA_OPTS="$EXTRA_OPTS -e kolla_action=config_validate"
-        ;;
 (prune-images)
         ACTION="Prune orphaned Kolla images"
         PLAYBOOK="${BASEDIR}/ansible/prune-images.yml"
@@ -553,10 +477,6 @@ EOF
             exit 1
         fi
         ;;
-(nova-libvirt-cleanup)
-        ACTION="Cleanup disabled nova_libvirt containers"
-        PLAYBOOK="${BASEDIR}/ansible/nova-libvirt-cleanup.yml"
-        ;;
 (bash-completion)
         bash_completion
         exit 0
@@ -567,11 +487,8 @@ EOF
 esac
 
 GLOBALS_DIR="${CONFIG_DIR}/globals.d"
-EXTRA_GLOBALS=$(find ${GLOBALS_DIR} -maxdepth 1 -type f -name '*.yml' -printf ' -e @%p' || true 2>/dev/null)
+EXTRA_GLOBALS=$(find ${GLOBALS_DIR} -maxdepth 1 -type f -name '*.yml' -printf ' -e @%p' 2>/dev/null)
 PASSWORDS_FILE="${PASSWORDS_FILE:-${CONFIG_DIR}/passwords.yml}"
 CONFIG_OPTS="-e @${CONFIG_DIR}/globals.yml ${EXTRA_GLOBALS} -e @${PASSWORDS_FILE} -e CONFIG_DIR=${CONFIG_DIR}"
-CMD="ansible-playbook $CONFIG_OPTS $EXTRA_OPTS $PLAYBOOK $VERBOSITY"
-for INVENTORY in ${INVENTORIES[@]}; do
-    CMD="${CMD} --inventory $INVENTORY"
-done
+CMD="ansible-playbook -i $INVENTORY $CONFIG_OPTS $EXTRA_OPTS $PLAYBOOK $VERBOSITY"
 process_cmd

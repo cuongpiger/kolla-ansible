@@ -4,7 +4,6 @@ Listen {{ 'api' | kolla_address | put_address_in_context('url') }}:{{ vitrage_ap
 ServerSignature Off
 ServerTokens Prod
 TraceEnable off
-TimeOut {{ kolla_httpd_timeout }}
 KeepAliveTimeout {{ kolla_httpd_keep_alive }}
 
 ErrorLog "{{ vitrage_log_dir }}/apache-error.log"
@@ -34,7 +33,7 @@ LogLevel info
   ServerSignature Off
   CustomLog "{{ vitrage_log_dir }}/vitrage_wsgi_access.log" combined
   WSGIApplicationGroup %{GLOBAL}
-  WSGIDaemonProcess vitrage group=vitrage processes={{ vitrage_api_workers }} threads=1 user=vitrage
+  WSGIDaemonProcess vitrage group=vitrage processes={{ openstack_service_workers }} threads=1 user=vitrage
   WSGIProcessGroup vitrage
   WSGIScriptAlias / "/var/www/cgi-bin/vitrage/app.wsgi"
 {% if enable_vitrage_prometheus_datasource | bool %}

@@ -1,6 +1,0 @@
----
-features:
-  - |
-    Services using etcd3gw via tooz now use etcd via haproxy. This removes
-    a single point of failure, where we hardcoded the first etcd host for
-    backend_url.

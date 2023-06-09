@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Test deployment of magnum, trove and designate.
+# Test deployment of magnum, octavia and designate.
 
 set -o xtrace
 set -o errexit
@@ -14,10 +14,8 @@ function test_magnum_clusters {
     openstack coe cluster template list
 }
 
-function test_trove {
-    # smoke test
-    openstack database instance list
-    openstack database cluster list
+function test_octavia {
+    openstack loadbalancer list
 }
 
 function test_designate {
@@ -38,11 +36,7 @@ zone_id = ${ZONE_ID}
 EOF
 
     RAW_INVENTORY=/etc/kolla/inventory
-    deactivate
-    source $KOLLA_ANSIBLE_VENV_PATH/bin/activate
     kolla-ansible -i ${RAW_INVENTORY} --tags designate -vvv reconfigure &> /tmp/logs/ansible/reconfigure-designate
-    deactivate
-    source ~/openstackclient-venv/bin/activate
 
     # Create an instance, and check that its name resolves.
     openstack server create --wait --image cirros --flavor m1.tiny --key-name mykey --network demo-net dns-test --wait
@@ -66,18 +60,18 @@ function test_magnum_logged {
     . /etc/kolla/admin-openrc.sh
     . ~/openstackclient-venv/bin/activate
     test_magnum_clusters
+    test_octavia
     test_designate
-    test_trove
 }
 
 function test_magnum {
-    echo "Testing Magnum, Trove and Designate"
+    echo "Testing Magnum, Octavia and Designate"
     test_magnum_logged > /tmp/logs/ansible/test-magnum 2>&1
     result=$?
     if [[ $result != 0 ]]; then
-        echo "Testing Magnum, Trove and Designate failed. See ansible/test-magnum for details"
+        echo "Testing Magnum, Octavia and Designate failed. See ansible/test-magnum for details"
     else
-        echo "Successfully tested Magnum, Trove and Designate . See ansible/test-magnum for details"
+        echo "Successfully tested Magnum, Octavia and Designate . See ansible/test-magnum for details"
     fi
     return $result
 }

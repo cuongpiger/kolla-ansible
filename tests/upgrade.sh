@@ -9,19 +9,14 @@ export PYTHONUNBUFFERED=1
 
 function upgrade {
     RAW_INVENTORY=/etc/kolla/inventory
-
-    source $KOLLA_ANSIBLE_VENV_PATH/bin/activate
-
+    # generate self-signed certificates for the optional internal TLS tests
+    if [[ "$TLS_ENABLED" = "True" ]]; then
+        kolla-ansible -i ${RAW_INVENTORY} -vvv certificates > /tmp/logs/ansible/certificates
+    fi
     kolla-ansible -i ${RAW_INVENTORY} -vvv prechecks &> /tmp/logs/ansible/upgrade-prechecks
     kolla-ansible -i ${RAW_INVENTORY} -vvv pull &> /tmp/logs/ansible/pull-upgrade
     kolla-ansible -i ${RAW_INVENTORY} -vvv upgrade &> /tmp/logs/ansible/upgrade
-
-    # NOTE(yoctozepto): These actions remove the leftovers of the admin port.
-    # TODO(yoctozepto): Remove after Zed.
-    kolla-ansible -i ${RAW_INVENTORY} -vvv deploy --tags keystone &> /tmp/logs/ansible/upgrade-deploy
-    kolla-ansible -i ${RAW_INVENTORY} -vvv post-deploy &> /tmp/logs/ansible/upgrade-post-deploy
-
-    kolla-ansible -i ${RAW_INVENTORY} -vvv validate-config &> /tmp/logs/ansible/validate-config
+    kolla-ansible -i ${RAW_INVENTORY} -vvv check &> /tmp/logs/ansible/check-upgrade
 }
 
 

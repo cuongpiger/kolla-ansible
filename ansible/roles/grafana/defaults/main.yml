@@ -14,7 +14,7 @@ grafana_services:
         external: false
         port: "{{ grafana_server_port }}"
       grafana_server_external:
-        enabled: "{{ enable_grafana_external | bool }}"
+        enabled: "{{ enable_grafana }}"
         mode: "http"
         external: true
         port: "{{ grafana_server_port }}"
@@ -27,20 +27,6 @@ grafana_database_user: "{% if use_preconfigured_databases | bool and use_common_
 grafana_database_address: "{{ database_address | put_address_in_context('url') }}:{{ database_port }}"
 
 ####################
-# Database sharding
-####################
-grafana_database_shard_root_user: "{% if enable_proxysql | bool %}root_shard_{{ grafana_database_shard_id }}{% else %}{{ database_user }}{% endif %}"
-grafana_database_shard_id: "{{ mariadb_default_database_shard_id | int }}"
-grafana_database_shard:
-  users:
-    - user: "{{ grafana_database_user }}"
-      password: "{{ grafana_database_password }}"
-  rules:
-    - schema: "{{ grafana_database_name }}"
-      shard_id: "{{ grafana_database_shard_id }}"
-
-
-####################
 # Datasource
 ####################
 grafana_data_sources:
@@ -51,26 +37,26 @@ grafana_data_sources:
       database: "telegraf"
       name: "telegraf"
       type: "influxdb"
-      url: "{{ influxdb_internal_endpoint }}"
+      url: "{{ infuxdb_internal_endpoint }}"
       access: "proxy"
       basicAuth: false
-  opensearch:
-    enabled: "{{ enable_opensearch | bool }}"
+  elasticsearch:
+    enabled: "{{ enable_elasticsearch | bool }}"
     data:
-      name: "opensearch"
-      type: "grafana-opensearch-datasource"
+      name: "elasticsearch"
+      type: "elasticsearch"
       access: "proxy"
-      url: "{{ opensearch_internal_endpoint }}"
+      url: "{{ elasticsearch_internal_endpoint }}"
+      database: "flog-*"
       jsonData:
-        flavor: "elasticsearch"
-        database: "[flog-]YYYY.MM.DD"
-        version: "7.0.0"
+        esVersion: 5
         timeField: "@timestamp"
 
 ##########
 # Grafana
 ##########
-grafana_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/grafana"
+grafana_install_type: "{{ kolla_install_type }}"
+grafana_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ grafana_install_type }}-grafana"
 grafana_tag: "{{ openstack_tag }}"
 grafana_image_full: "{{ grafana_image }}:{{ grafana_tag }}"
 grafana_admin_username: "admin"

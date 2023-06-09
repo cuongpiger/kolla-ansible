@@ -10,8 +10,6 @@ export PYTHONUNBUFFERED=1
 function deploy {
     RAW_INVENTORY=/etc/kolla/inventory
 
-    source $KOLLA_ANSIBLE_VENV_PATH/bin/activate
-
     #TODO(inc0): Post-deploy complains that /etc/kolla is not writable. Probably we need to include become there
     sudo chmod -R 777 /etc/kolla
     # generate self-signed certificates for the optional internal TLS tests
@@ -23,10 +21,7 @@ function deploy {
     kolla-ansible -i ${RAW_INVENTORY} -vvv pull &> /tmp/logs/ansible/pull
     kolla-ansible -i ${RAW_INVENTORY} -vvv deploy &> /tmp/logs/ansible/deploy
     kolla-ansible -i ${RAW_INVENTORY} -vvv post-deploy &> /tmp/logs/ansible/post-deploy
-
-    if [[ $HAS_UPGRADE == 'no' ]]; then
-        kolla-ansible -i ${RAW_INVENTORY} -vvv validate-config &> /tmp/logs/ansible/validate-config
-    fi
+    kolla-ansible -i ${RAW_INVENTORY} -vvv check &> /tmp/logs/ansible/check-deploy
 }
 
 

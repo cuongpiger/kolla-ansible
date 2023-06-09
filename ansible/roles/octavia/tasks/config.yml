@@ -1,7 +1,4 @@
 ---
-- include_tasks: get_resources_info.yml
-  when: octavia_auto_configure | bool
-
 - name: Ensuring config directories exist
   file:
     path: "{{ node_config_directory }}/{{ item.key }}"
@@ -11,7 +8,7 @@
     mode: "0770"
   become: true
   when:
-    - inventory_hostname in groups[item.value.group]
+    - inventory_hostname in groups.get(item.value.group, [])
     - item.value.enabled | bool
   with_dict: "{{ octavia_services }}"
 
@@ -42,7 +39,7 @@
   become: true
   when:
     - octavia_policy_file is defined
-    - inventory_hostname in groups[item.value.group]
+    - inventory_hostname in groups.get(item.value.group, [])
     - item.value.enabled | bool
   with_dict: "{{ octavia_services }}"
   notify:
@@ -50,7 +47,7 @@
 
 - include_tasks: copy-certs.yml
   when:
-    - kolla_copy_ca_into_containers | bool or octavia_enable_tls_backend | bool
+    - kolla_copy_ca_into_containers | bool
 
 - name: Copying over config.json files for services
   template:
@@ -59,29 +56,11 @@
     mode: "0660"
   become: true
   when:
-    - inventory_hostname in groups[item.value.group]
+    - inventory_hostname in groups.get(item.value.group, [])
     - item.value.enabled | bool
   with_dict: "{{ octavia_services }}"
   notify:
     - "Restart {{ item.key }} container"
-
-- name: Copying over octavia-wsgi.conf
-  vars:
-    service: "{{ octavia_services['octavia-api'] }}"
-  become: true
-  template:
-    src: "{{ item }}"
-    dest: "{{ node_config_directory }}/octavia-api/octavia-wsgi.conf"
-    mode: "0660"
-  with_first_found:
-    - "{{ node_custom_config }}/octavia/{{ inventory_hostname }}/octavia-wsgi.conf"
-    - "{{ node_custom_config }}/octavia/octavia-wsgi.conf"
-    - "octavia-wsgi.conf.j2"
-  when:
-    - inventory_hostname in groups[service.group]
-    - service.enabled | bool
-  notify:
-    - Restart octavia-api container
 
 - name: Copying over octavia.conf
   vars:
@@ -97,75 +76,77 @@
     mode: "0660"
   become: true
   when:
-    - inventory_hostname in groups[item.value.group]
+    - inventory_hostname in groups.get(item.value.group, [])
     - item.value.enabled | bool
   with_dict: "{{ octavia_services }}"
   notify:
     - "Restart {{ item.key }} container"
 
-- block:
+- name: Copying over Octavia SSH key
+  copy:
+    content: "{{ octavia_amp_ssh_key.private_key }}"
+    dest: "{{ node_config_directory }}/octavia-worker/{{ octavia_amp_ssh_key_name }}"
+    owner: "{{ config_owner_user }}"
+    group: "{{ config_owner_group }}"
+    mode: "0400"
+  become: True
+  when:
+    - inventory_hostname in groups[octavia_services['octavia-worker']['group']]
+    - octavia_auto_configure | bool
 
-    - name: Copying over Octavia SSH key
-      template:
-        src: "octavia-ssh-key.j2"
-        dest: "{{ node_config_directory }}/octavia-worker/{{ octavia_amp_ssh_key_name }}"
-        owner: "{{ config_owner_user }}"
-        group: "{{ config_owner_group }}"
-        mode: "0400"
-      become: True
-      when:
-        - inventory_hostname in groups[octavia_services['octavia-worker']['group']]
-        - octavia_auto_configure | bool
-
-    - name: Copying certificate files for octavia-worker
-      vars:
-        service: "{{ octavia_services['octavia-worker'] }}"
-      copy:
-        src: "{{ node_custom_config }}/octavia/{{ item }}"
-        dest: "{{ node_config_directory }}/octavia-worker/{{ item }}"
-        mode: "0660"
-      become: true
-      when:
-        - inventory_hostname in groups[service.group]
-        - service.enabled | bool
-      with_items: "{{ octavia_amphora_keys }}"
-      notify:
-        - Restart octavia-worker container
-
-    - name: Copying certificate files for octavia-housekeeping
-      vars:
-        service: "{{ octavia_services['octavia-housekeeping'] }}"
-      copy:
-        src: "{{ node_custom_config }}/octavia/{{ item }}"
-        dest: "{{ node_config_directory }}/octavia-housekeeping/{{ item }}"
-        mode: "0660"
-      become: true
-      when:
-        - inventory_hostname in groups[service.group]
-        - service.enabled | bool
-      with_items: "{{ octavia_amphora_keys }}"
-      notify:
-        - Restart octavia-housekeeping container
-
-    - name: Copying certificate files for octavia-health-manager
-      vars:
-        service: "{{ octavia_services['octavia-health-manager'] }}"
-      copy:
-        src: "{{ node_custom_config }}/octavia/{{ item }}"
-        dest: "{{ node_config_directory }}/octavia-health-manager/{{ item }}"
-        mode: "0660"
-      become: true
-      when:
-        - inventory_hostname in groups[service.group]
-        - service.enabled | bool
-      with_items: "{{ octavia_amphora_keys }}"
-      notify:
-        - Restart octavia-health-manager container
-
-  when: "'amphora' in octavia_provider_drivers"
+- name: Copying certificate files for octavia-worker
   vars:
-    octavia_amphora_keys:
-      - client.cert-and-key.pem
-      - client_ca.cert.pem
-      - server_ca.cert.pem
-      - server_ca.key.pem
+    service: "{{ octavia_services['octavia-worker'] }}"
+  copy:
+    src: "{{ node_custom_config }}/octavia/{{ item }}"
+    dest: "{{ node_config_directory }}/octavia-worker/{{ item }}"
+    mode: "0660"
+  become: true
+  when:
+    - inventory_hostname in groups[service.group]
+    - service.enabled | bool
+  with_items:
+    - client.cert-and-key.pem
+    - client_ca.cert.pem
+    - server_ca.cert.pem
+    - server_ca.key.pem
+  notify:
+    - Restart octavia-worker container
+
+- name: Copying certificate files for octavia-housekeeping
+  vars:
+    service: "{{ octavia_services['octavia-housekeeping'] }}"
+  copy:
+    src: "{{ node_custom_config }}/octavia/{{ item }}"
+    dest: "{{ node_config_directory }}/octavia-housekeeping/{{ item }}"
+    mode: "0660"
+  become: true
+  when:
+    - inventory_hostname in groups[service.group]
+    - service.enabled | bool
+  with_items:
+    - client.cert-and-key.pem
+    - client_ca.cert.pem
+    - server_ca.cert.pem
+    - server_ca.key.pem
+  notify:
+    - Restart octavia-housekeeping container
+
+- name: Copying certificate files for octavia-health-manager
+  vars:
+    service: "{{ octavia_services['octavia-health-manager'] }}"
+  copy:
+    src: "{{ node_custom_config }}/octavia/{{ item }}"
+    dest: "{{ node_config_directory }}/octavia-health-manager/{{ item }}"
+    mode: "0660"
+  become: true
+  when:
+    - inventory_hostname in groups[service.group]
+    - service.enabled | bool
+  with_items:
+    - client.cert-and-key.pem
+    - client_ca.cert.pem
+    - server_ca.cert.pem
+    - server_ca.key.pem
+  notify:
+    - Restart octavia-health-manager container

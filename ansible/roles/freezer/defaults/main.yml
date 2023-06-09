@@ -27,13 +27,6 @@ freezer_services:
     dimensions: "{{ freezer_scheduler_dimensions }}"
 
 ####################
-# Config Validate
-####################
-freezer_config_validation:
-  - generator: "/freezer/etc/config-generator.conf"
-    config: "/etc/freezer/freezer.conf"
-
-####################
 ## Database
 #####################
 freezer_database_backend: "mariadb"
@@ -42,33 +35,20 @@ freezer_database_user: "{% if use_preconfigured_databases | bool and use_common_
 freezer_database_address: "{{ database_address | put_address_in_context('url') }}:{{ database_port }}"
 freezer_elasticsearch_replicas: "1"
 freezer_es_protocol: "{{ internal_protocol }}"
-freezer_es_address: "{{ opensearch_address }}"
-freezer_es_port: "{{ opensearch_port }}"
-
-####################
-# Database sharding
-####################
-freezer_database_shard_root_user: "{% if enable_proxysql | bool %}root_shard_{{ freezer_database_shard_id }}{% else %}{{ database_user }}{% endif %}"
-freezer_database_shard_id: "{{ mariadb_default_database_shard_id | int }}"
-freezer_database_shard:
-  users:
-    - user: "{{ freezer_database_user }}"
-      password: "{{ freezer_database_password }}"
-  rules:
-    - schema: "{{ freezer_database_name }}"
-      shard_id: "{{ freezer_database_shard_id }}"
-
+freezer_es_address: "{{ elasticsearch_address }}"
+freezer_es_port: "{{ elasticsearch_port }}"
 
 ####################
 # Docker
 ####################
+freezer_install_type: "{{ kolla_install_type }}"
 freezer_tag: "{{ openstack_tag }}"
 
-freezer_api_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/freezer-api"
+freezer_api_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ freezer_install_type }}-freezer-api"
 freezer_api_tag: "{{ freezer_tag }}"
 freezer_api_image_full: "{{ freezer_api_image }}:{{ freezer_api_tag }}"
 
-freezer_scheduler_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/freezer-scheduler"
+freezer_scheduler_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ freezer_install_type }}-freezer-scheduler"
 freezer_scheduler_tag: "{{ freezer_tag }}"
 freezer_scheduler_image_full: "{{ freezer_scheduler_image }}:{{ freezer_scheduler_tag }}"
 
@@ -97,6 +77,7 @@ freezer_scheduler_extra_volumes: "{{ freezer_extra_volumes }}"
 ####################
 # OpenStack
 ####################
+freezer_admin_endpoint: "{{ admin_protocol }}://{{ kolla_internal_fqdn | put_address_in_context('url') }}:{{ freezer_api_port }}"
 freezer_internal_endpoint: "{{ internal_protocol }}://{{ kolla_internal_fqdn | put_address_in_context('url') }}:{{ freezer_api_port }}"
 freezer_public_endpoint: "{{ public_protocol }}://{{ kolla_external_fqdn | put_address_in_context('url') }}:{{ freezer_api_port }}"
 
@@ -106,7 +87,6 @@ freezer_keystone_user: "freezer"
 
 openstack_freezer_auth: "{{ openstack_auth }}"
 
-freezer_api_workers: "{{ openstack_service_workers }}"
 
 ####################
 # Kolla
@@ -125,6 +105,7 @@ freezer_ks_services:
     type: "backup"
     description: "Openstack Freezer Backup Service"
     endpoints:
+      - {'interface': 'admin', 'url': '{{ freezer_admin_endpoint }}'}
       - {'interface': 'internal', 'url': '{{ freezer_internal_endpoint }}'}
       - {'interface': 'public', 'url': '{{ freezer_public_endpoint }}'}
 

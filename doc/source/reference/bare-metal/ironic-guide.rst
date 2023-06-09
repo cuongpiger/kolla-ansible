@@ -6,9 +6,8 @@ Ironic - Bare Metal provisioning
 
 Overview
 ~~~~~~~~
-Ironic is the OpenStack service for handling bare metal, i.e., the physical
-machines. It can work standalone as well as with other OpenStack services
-(notably, Neutron and Nova).
+Ironic works well in Kolla, though it is not thoroughly tested as part of Kolla
+CI, so may be subject to instability.
 
 Pre-deployment Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -19,57 +18,27 @@ Enable Ironic in ``/etc/kolla/globals.yml``:
    enable_ironic: "yes"
 
 In the same file, define a network interface as the default NIC for dnsmasq and
-define a network to be used for the Ironic cleaning network:
+a range of IP addresses that will be available for use by Ironic inspector.
+The optional netmask of the network should be provided in case when DHCP-relay
+is used. Finally, define a network to be used for the Ironic cleaning network:
 
 .. code-block:: yaml
 
    ironic_dnsmasq_interface: "eth1"
+   ironic_dnsmasq_dhcp_range: "192.168.5.100,192.168.5.110,255.255.255.0"
    ironic_cleaning_network: "public1"
 
-Finally, define at least one DHCP range for Ironic inspector:
+In the same file, optionally a default gateway to be used for the Ironic
+Inspector inspection network:
 
 .. code-block:: yaml
 
-   ironic_dnsmasq_dhcp_ranges:
-     - range: "192.168.5.100,192.168.5.110"
-
-Another example of a single range with a router (multiple routers
-are possible by separating addresses with commas):
-
-.. code-block:: yaml
-
-   ironic_dnsmasq_dhcp_ranges:
-     - range: "192.168.5.100,192.168.5.110"
-       routers: "192.168.5.1"
-
-To support DHCP relay, it is also possible to define a netmask in the range.
-It is advisable to also provide a router to allow the traffic to reach the
-Ironic server.
-
-.. code-block:: yaml
-
-  ironic_dnsmasq_dhcp_ranges:
-    - range: "192.168.5.100,192.168.5.110,255.255.255.0"
-      routers: "192.168.5.1"
-
-Multiple ranges are possible, they can be either for directly-connected
-interfaces or relays (if with netmask):
-
-.. code-block:: yaml
-
-  ironic_dnsmasq_dhcp_ranges:
-    - range: "192.168.5.100,192.168.5.110"
-    - range: "192.168.6.100,192.168.6.110,255.255.255.0"
-      routers: "192.168.6.1"
-
-The default lease time for each range can be configured globally via
-``ironic_dnsmasq_dhcp_default_lease_time`` variable or per range via
-``lease_time`` parameter.
+   ironic_dnsmasq_default_gateway: 192.168.5.1
 
 In the same file, specify the PXE bootloader file for Ironic Inspector. The
-file is relative to the ``/var/lib/ironic/tftpboot`` directory. The default is
-``pxelinux.0``, and should be correct for x86 systems. Other platforms may
-require a differentvalue, for example aarch64 on Debian requires
+file is relative to the ``/tftpboot`` directory. The default is ``pxelinux.0``,
+and should be correct for x86 systems. Other platforms may require a different
+value, for example aarch64 on Debian requires
 ``debian-installer/arm64/bootnetaa64.efi``.
 
 .. code-block:: yaml
@@ -83,10 +52,10 @@ be used:
 
 .. code-block:: console
 
-   $ curl https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-centos9-|KOLLA_BRANCH_NAME_DASHED|.kernel \
+   $ curl https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-centos8-master.kernel \
      -o /etc/kolla/config/ironic/ironic-agent.kernel
 
-   $ curl https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-centos9-|KOLLA_BRANCH_NAME_DASHED|.initramfs \
+   $ curl https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-centos8-master.initramfs \
      -o /etc/kolla/config/ironic/ironic-agent.initramfs
 
 You may optionally pass extra kernel parameters to the inspection kernel using:
@@ -97,34 +66,34 @@ You may optionally pass extra kernel parameters to the inspection kernel using:
 
 in ``/etc/kolla/globals.yml``.
 
-Configure conductor's HTTP server port (optional)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The port used for conductor's HTTP server is controlled via
-``ironic_http_port`` in ``/etc/kolla/globals.yml``:
+Enable iPXE booting (optional)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can optionally enable booting via iPXE by setting ``enable_ironic_ipxe`` to
+true in ``/etc/kolla/globals.yml``:
 
 .. code-block:: yaml
 
-    ironic_http_port: "8089"
+    enable_ironic_ipxe: "yes"
 
-Revert to plain PXE (not recommended)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Starting with Yoga, Ironic has changed the default PXE from plain PXE to iPXE.
-Kolla Ansible follows this upstream decision by choosing iPXE as the default
-for Ironic Inspector but allows users to revert to the previous default of
-plain PXE by setting the following in
+This will enable deployment of a docker container, called ironic_ipxe, running
+the web server which iPXE uses to obtain it's boot images.
+
+The port used for the iPXE webserver is controlled via ``ironic_ipxe_port`` in
 ``/etc/kolla/globals.yml``:
 
 .. code-block:: yaml
 
-   ironic_dnsmasq_serve_ipxe: "no"
+    ironic_ipxe_port: "8089"
 
-To revert Ironic to previous default as well, set ``pxe`` as
-``default_boot_interface`` in ``/etc/kolla/config/ironic.conf``:
+The following changes will occur if iPXE booting is enabled:
 
-.. code-block:: yaml
-
-   [DEFAULT]
-   default_boot_interface = pxe
+- Ironic will be configured with the ``ipxe_enabled`` configuration option set
+  to true
+- The inspection ramdisk and kernel will be loaded via iPXE
+- The DHCP servers will be configured to chainload iPXE from an existing PXE
+  environment. You may also boot directly to iPXE by some other means e.g by
+  burning it to the option rom of your ethernet card.
 
 Attach ironic to external keystone (optional)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -177,12 +146,12 @@ describes how to create Nova flavors for bare metal.  For example:
 
 .. code-block:: console
 
-  openstack flavor create my-baremetal-flavor \
-    --ram 512 --disk 1 --vcpus 1 \
-    --property resources:CUSTOM_BAREMETAL_RESOURCE_CLASS=1 \
-    --property resources:VCPU=0 \
-    --property resources:MEMORY_MB=0 \
-    --property resources:DISK_GB=0
+  openstack flavor create --ram 512 --disk 1 --vcpus 1 my-baremetal-flavor
+  openstack flavor set my-baremetal-flavor --property \
+    resources:CUSTOM_BAREMETAL_RESOURCE_CLASS=1 \
+    resources:resources:VCPU=0 \
+    resources:resources:MEMORY_MB=0 \
+    resources:resources:DISK_GB=0
 
 The :ironic-doc:`Ironic documentation <install/enrollment>` describes how to
 enroll baremetal nodes and ports.  In the following example ensure to

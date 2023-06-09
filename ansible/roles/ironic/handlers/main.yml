@@ -10,9 +10,8 @@
     name: "{{ service.container_name }}"
     image: "{{ service.image }}"
     privileged: "{{ service.privileged | default(False) }}"
-    volumes: "{{ service.volumes | reject('equalto', '') | list }}"
+    volumes: "{{ service.volumes|reject('equalto', '')|list }}"
     dimensions: "{{ service.dimensions }}"
-    healthcheck: "{{ service.healthcheck | default(omit) }}"
   when:
     - kolla_action != "config"
 
@@ -26,11 +25,30 @@
     common_options: "{{ docker_common_options }}"
     name: "{{ service.container_name }}"
     image: "{{ service.image }}"
-    volumes: "{{ service.volumes | reject('equalto', '') | list }}"
+    volumes: "{{ service.volumes|reject('equalto', '')|list }}"
     dimensions: "{{ service.dimensions }}"
-    healthcheck: "{{ service.healthcheck | default(omit) }}"
   when:
     - kolla_action != "config"
+
+# Due to a bug in the ironic client, ironic inspector fails to start if ironic
+# API is not accessible. https://storyboard.openstack.org/#!/story/2006393
+# TODO(mgoddard): remove this task when
+# https://storyboard.openstack.org/#!/story/2006393 has been fixed.
+- name: Wait for ironic-api to be accessible
+  become: true
+  kolla_toolbox:
+    module_name: uri
+    module_args:
+      url: "{{ ironic_internal_endpoint }}"
+      validate_certs: false
+  register: result
+  until: result is success
+  retries: 12
+  delay: 5
+  listen: Restart ironic-api container
+  when:
+    - kolla_action != "config"
+  run_once: True
 
 - name: Restart ironic-inspector container
   vars:
@@ -43,31 +61,14 @@
     name: "{{ service.container_name }}"
     image: "{{ service.image }}"
     privileged: "{{ service.privileged | default(False) }}"
-    volumes: "{{ service.volumes | reject('equalto', '') | list }}"
-    dimensions: "{{ service.dimensions }}"
-    healthcheck: "{{ service.healthcheck | default(omit) }}"
-  when:
-    - kolla_action != "config"
-
-- name: Restart ironic-tftp container
-  vars:
-    service_name: "ironic-tftp"
-    service: "{{ ironic_services[service_name] }}"
-  become: true
-  kolla_docker:
-    action: "recreate_or_restart_container"
-    common_options: "{{ docker_common_options }}"
-    name: "{{ service.container_name }}"
-    image: "{{ service.image }}"
-    environment: "{{ service.environment }}"
-    volumes: "{{ service.volumes }}"
+    volumes: "{{ service.volumes|reject('equalto', '')|list }}"
     dimensions: "{{ service.dimensions }}"
   when:
     - kolla_action != "config"
 
-- name: Restart ironic-http container
+- name: Restart ironic-pxe container
   vars:
-    service_name: "ironic-http"
+    service_name: "ironic-pxe"
     service: "{{ ironic_services[service_name] }}"
   become: true
   kolla_docker:
@@ -77,7 +78,21 @@
     image: "{{ service.image }}"
     volumes: "{{ service.volumes }}"
     dimensions: "{{ service.dimensions }}"
-    healthcheck: "{{ service.healthcheck | default(omit) }}"
+  when:
+    - kolla_action != "config"
+
+- name: Restart ironic-ipxe container
+  vars:
+    service_name: "ironic-ipxe"
+    service: "{{ ironic_services[service_name] }}"
+  become: true
+  kolla_docker:
+    action: "recreate_or_restart_container"
+    common_options: "{{ docker_common_options }}"
+    name: "{{ service.container_name }}"
+    image: "{{ service.image }}"
+    volumes: "{{ service.volumes }}"
+    dimensions: "{{ service.dimensions }}"
   when:
     - kolla_action != "config"
 

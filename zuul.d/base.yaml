@@ -7,7 +7,6 @@
     timeout: 7200
     post-timeout: 1800
     required-projects:
-      - openstack/ansible-collection-kolla
       - openstack/kolla
       - openstack/kolla-ansible
       - openstack/requirements
@@ -17,7 +16,6 @@
       - ^releasenotes/.*$
       - ^deploy-guide/.*$
       - ^test-requirements.txt$
-      - ^lint-requirements.txt$
       - ^etc/kolla/globals.yml$
       - ^tox.ini$
       - ^\..+
@@ -27,7 +25,7 @@
       - ^kolla_ansible/tests/
       - ^zuul\.d/
     vars:
-      previous_release: zed
+      previous_release: ussuri
       scenario: core
       virt_type: qemu
       is_upgrade: no
@@ -41,9 +39,6 @@
       neutron_external_bridge_name: br0
       neutron_external_interface_name: "veth-{{ neutron_external_bridge_name }}-ext"
       neutron_external_vxlan_interface_name: vxlan1
-      neutron_tenant_network_prefix: "203.0.113."
-      neutron_tenant_network_prefix_length: "24"
-      neutron_tenant_network_dns_server: "8.8.8.8"
       tls_enabled: false
       configure_swap_size: 0
     roles:
@@ -56,7 +51,6 @@
     voting: false
     files:
       - ^ansible/roles/(nova-cell)/
-      - ^tests/templates/nova-compute-overrides.j2
     vars:
       virt_type: kvm
 
@@ -68,11 +62,6 @@
       api_network_prefix: "fd::"
       api_network_prefix_length: "64"
       kolla_internal_vip_address: "fd::ff:0"
-      neutron_external_network_prefix: "fd:1::"
-      neutron_external_network_prefix_length: "64"
-      neutron_tenant_network_prefix: "fd:f0::"
-      neutron_tenant_network_prefix_length: "64"
-      neutron_tenant_network_dns_server: 2001:4860:4860::8888
       address_family: 'ipv6'
 
 - job:
@@ -84,20 +73,16 @@
       - ^tests/test-bifrost.sh
     vars:
       scenario: bifrost
+      install_type: source
 
 - job:
     name: kolla-ansible-ironic-base
     parent: kolla-ansible-base
     voting: false
     files:
-      - ^ansible/roles/(ironic|neutron|nova|nova-cell)/
-      - ^tests/deploy-tenks\.sh$
-      - ^tests/templates/ironic-overrides\.j2$
-      - ^tests/templates/tenks-deploy-config\.yml\.j2$
-      - ^tests/test-dashboard\.sh$
-      - ^tests/test-ironic\.sh$
-    required-projects:
-      - openstack/tenks
+      - ^ansible/roles/(ironic|nova|nova-cell)/
+      - ^tests/test-ironic.sh
+      - ^tests/test-dashboard.sh
     vars:
       scenario: ironic
 
@@ -111,7 +96,6 @@
       - ^tests/test-core-openstack.sh
       - ^tests/test-zun.sh
       - ^tests/test-dashboard.sh
-      - ^tests/templates/globals-default\.j2$
     vars:
       scenario: zun
 
@@ -130,33 +114,26 @@
       scenario: swift
 
 - job:
-    name: kolla-ansible-cephadm-base
+    name: kolla-ansible-ceph-ansible-base
     parent: kolla-ansible-base
     voting: false
     vars:
-      scenario: cephadm
+      scenario: ceph-ansible
+      ceph_osd_storetype: ceph-lvm
+    required-projects:
+      - name: github.com/ceph/ceph-ansible
+        override-checkout: v5.0.0
 
 - job:
     name: kolla-ansible-magnum-base
     parent: kolla-ansible-base
     voting: false
     files:
-      - ^ansible/roles/(designate|magnum|trove)/
+      - ^ansible/roles/(designate|magnum|octavia|octavia-certificates)/
       - ^tests/test-dashboard.sh
       - ^tests/test-magnum.sh
     vars:
       scenario: magnum
-
-- job:
-    name: kolla-ansible-octavia-base
-    parent: kolla-ansible-base
-    voting: false
-    files:
-      - ^ansible/roles/(octavia|octavia-certificates)/
-      - ^tests/test-dashboard.sh
-      - ^tests/test-octavia.sh
-    vars:
-      scenario: octavia
 
 - job:
     name: kolla-ansible-masakari-base
@@ -164,7 +141,6 @@
     voting: false
     files:
       - ^ansible/roles/masakari/
-      - ^ansible/roles/hacluster/
       - ^tests/test-masakari.sh
       - ^tests/test-dashboard.sh
     vars:
@@ -195,51 +171,36 @@
     name: kolla-ansible-cells-base
     parent: kolla-ansible-base
     voting: false
-    files:
-      - ^ansible/roles/nova/
-      - ^tests/test-core-openstack.sh
     vars:
       scenario: cells
+
+- job:
+    name: kolla-ansible-linuxbridge-base
+    parent: kolla-ansible-base
+    voting: false
+    files:
+      - ^ansible/roles/neutron/
+      - ^tests/test-core-openstack.sh
+    vars:
+      scenario: linuxbridge
 
 - job:
     name: kolla-ansible-ovn-base
     parent: kolla-ansible-base
     voting: false
     files:
-      - ^ansible/roles/(neutron|octavia|openvswitch|ovn-controller|ovn-db)/
+      - ^ansible/roles/(neutron|octavia|openvswitch|ovn)/
       - ^tests/test-ovn.sh
       - ^tests/test-core-openstack.sh
     vars:
       scenario: ovn
 
 - job:
-    name: kolla-ansible-prometheus-opensearch-base
+    name: kolla-ansible-prometheus-efk-base
     parent: kolla-ansible-base
     voting: false
     files:
-      - ^ansible/roles/(common|opensearch|grafana|prometheus)/
-      - ^tests/test-prometheus-opensearch.sh
+      - ^ansible/roles/(common|elasticsearch|grafana|kibana|prometheus)/
+      - ^tests/test-prometheus-efk.sh
     vars:
-      scenario: prometheus-opensearch
-
-- job:
-    name: kolla-ansible-venus-base
-    parent: kolla-ansible-base
-    voting: false
-    files:
-      - ^ansible/roles/(common|opensearch|venus)/
-      - ^tests/test-venus.sh
-    vars:
-      scenario: venus
-
-- job:
-    name: kolla-ansible-hashi-vault-base
-    run: tests/run-hashi-vault.yml
-    required-projects:
-      - openstack/kolla-ansible
-      - openstack/requirements
-    voting: false
-    files:
-      - ^kolla_ansible/
-      - ^tests/run-hashi-vault.yml
-      - ^tests/test-hashicorp-vault-passwords.sh
+      scenario: prometheus-efk
