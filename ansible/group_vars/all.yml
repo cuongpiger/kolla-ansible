@@ -542,7 +542,7 @@ openstack_release: "victoria"
 # Docker image tag used by default.
 openstack_tag: "{{ openstack_release ~ openstack_tag_suffix }}"
 openstack_tag_suffix: "{{ '-centos8s' if 'Stream' in (kolla_centos_release['content'] | default() | b64decode ) else '' }}"
-openstack_logging_debug: "False"
+openstack_logging_debug: "True"
 
 openstack_region_name: "RegionOne"
 

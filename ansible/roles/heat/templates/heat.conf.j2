@@ -1,6 +1,9 @@
 [DEFAULT]
 debug = {{ heat_logging_debug }}
-
+logging_exception_prefix = ERROR %(name)s.%(funcName)s:%(lineno)s %(instance)s
+logging_debug_format_suffix = [00;33m{{ (pid=%(process)d) %(pathname)s.%(funcName)s:%(lineno)d }}[00m
+logging_default_format_string = %(asctime)s.%(msecs)03d %(process)d %(levelname)s %(name)s.%(funcName)s:%(lineno)s [-] %(instance)s%(message)s
+logging_context_format_string = %(asctime)s.%(msecs)03d %(process)d %(levelname)s %(name)s.%(funcName)s:%(lineno)s [%(global_request_id)s %(request_id)s '%(user_identity)s] [C] %(instance)s %(message)s
 log_dir = /var/log/kolla/heat
 log_file = $log_dir/{{ service_name }}.log
 heat_metadata_server_url = {{ heat_cfn_public_base_endpoint }}
