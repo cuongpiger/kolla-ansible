@@ -1,4 +1,2 @@
 ---
-- import_tasks: config.yml
-
-- import_tasks: check-containers.yml
+- include_tasks: config.yml

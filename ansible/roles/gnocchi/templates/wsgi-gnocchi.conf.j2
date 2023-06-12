@@ -1,29 +1,22 @@
-{% set gnocchi_log_dir = '/var/log/kolla/gnocchi' %}
-{% set wsgi_path = '/var/lib/kolla/venv/bin' %}
-Listen {{ api_interface_address | put_address_in_context('url') }}:{{ gnocchi_api_listen_port }}
+{% if gnocchi_install_type == 'binary' %}
+    {% set python_path = '/usr/lib/python3/dist-packages' if kolla_base_distro == 'ubuntu' else '/usr/lib/python2.7/site-packages' %}
+{% else %}
+    {% set python_path = '/var/lib/kolla/venv/lib/python2.7/site-packages' %}
+{% endif %}
+{% set wsgi_path = '/usr/bin' if gnocchi_install_type == 'binary' else '/var/lib/kolla/venv/bin' %}
+Listen {{ api_interface_address }}:{{ gnocchi_api_port }}
 
 ServerSignature Off
 ServerTokens Prod
 TraceEnable off
-TimeOut {{ kolla_httpd_timeout }}
-KeepAliveTimeout {{ kolla_httpd_keep_alive }}
 
-ErrorLog "{{ gnocchi_log_dir }}/apache-error.log"
-<IfModule log_config_module>
-    CustomLog "{{ gnocchi_log_dir }}/apache-access.log" common
-</IfModule>
+<VirtualHost *:{{ gnocchi_api_port }}>
 
-{% if gnocchi_logging_debug | bool %}
-LogLevel info
-{% endif %}
-
-<VirtualHost *:{{ gnocchi_api_listen_port }}>
-
-  ErrorLog "{{ gnocchi_log_dir }}/gnocchi-api-error.log"
+  ErrorLog "/var/log/kolla/gnocchi/gnocchi-api-error.log"
   LogFormat "%{X-Forwarded-For}i %l %u %t \"%r\" %>s %b %D \"%{Referer}i\" \"%{User-Agent}i\"" logformat
-  CustomLog "{{ gnocchi_log_dir }}/gnocchi-api-access.log" logformat
+  CustomLog "/var/log/kolla/gnocchi/gnocchi-api-access.log" logformat
   WSGIApplicationGroup %{GLOBAL}
-  WSGIDaemonProcess gnocchi group=gnocchi processes={{ gnocchi_api_workers }} threads=1 user=gnocchi
+  WSGIDaemonProcess gnocchi group=gnocchi processes={{ openstack_service_workers }} threads=1 user=gnocchi python-path={{ python_path }}
   WSGIProcessGroup gnocchi
   WSGIScriptAlias / "{{ wsgi_path }}/gnocchi-api"
 

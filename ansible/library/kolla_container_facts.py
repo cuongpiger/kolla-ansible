@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Copyright 2016 99cloud
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,11 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import docker
-
-from ansible.module_utils.basic import AnsibleModule
-
 DOCUMENTATION = '''
 ---
 module: kolla_container_facts
@@ -25,11 +22,6 @@ description:
   - A module targeting at collecting Docker container facts. It is used for
     detecting whether the container is running on host in Kolla.
 options:
-  container_engine:
-    description:
-      - Name of container engine to use
-    required: True
-    type: str
   api_version:
     description:
       - The version of the api for docker-py to use when contacting docker
@@ -52,11 +44,12 @@ EXAMPLES = '''
 
     - name: Gather glance container facts
       kolla_container_facts:
-        container_engine: docker
         name:
           - glance_api
           - glance_registry
 '''
+
+import docker
 
 
 def get_docker_client():
@@ -66,8 +59,7 @@ def get_docker_client():
 def main():
     argument_spec = dict(
         name=dict(required=False, type='list', default=[]),
-        api_version=dict(required=False, type='str', default='auto'),
-        container_engine=dict(required=True, type='str')
+        api_version=dict(required=False, type='str', default='auto')
     )
 
     module = AnsibleModule(argument_spec=argument_spec)
@@ -89,5 +81,6 @@ def main():
     module.exit_json(**results)
 
 
+from ansible.module_utils.basic import *  # noqa
 if __name__ == "__main__":
     main()

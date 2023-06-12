@@ -1,5 +1,4 @@
 ---
-# Stop the container prior to redeploying it.
-- import_tasks: stop.yml
+- include_tasks: config.yml
 
-- import_tasks: deploy.yml
+- include_tasks: start.yml

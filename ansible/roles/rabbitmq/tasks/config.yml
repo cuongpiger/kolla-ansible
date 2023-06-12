@@ -12,12 +12,32 @@
     - item.value.enabled | bool
   with_dict: "{{ rabbitmq_services }}"
 
+- name: Reading cluster configuration file
+  become: True
+  slurp:
+    src: "{{ node_config_directory }}/{{ project_name }}/rabbitmq-clusterer.config"
+  register: cluster_config
+  failed_when: False
+
+- name: Establishing existing cluster version number
+  set_fact:
+    rabbitmq_cluster_version: "{{ cluster_config['content'] | b64decode | regex_search(regexp,'\\1', multiline=True) | first }}"
+  vars:
+    regexp: '\{version, (\d+)\},'
+  when: cluster_config['content'] is defined
+
+- name: Establishing default cluster version number
+  set_fact:
+    rabbitmq_cluster_version: 1
+  when: cluster_config['content'] is not defined
+
 - name: Copying over config.json files for services
   template:
     src: "{{ item.key }}.json.j2"
     dest: "{{ node_config_directory }}/{{ project_name }}/config.json"
     mode: "0660"
   become: true
+  register: rabbitmq_config_jsons
   when:
     - inventory_hostname in groups[item.value.group]
     - item.value.enabled | bool
@@ -25,113 +45,72 @@
   notify:
     - Restart rabbitmq container
 
-- name: Copying over rabbitmq-env.conf
-  become: true
+- name: Copying over rabbitmq configs
   vars:
     service: "{{ rabbitmq_services['rabbitmq'] }}"
+    cluster_version: "{{ rabbitmq_cluster_version }}"
   template:
-    src: "{{ item }}"
-    dest: "{{ node_config_directory }}/{{ project_name }}/rabbitmq-env.conf"
+    src: "{{ item }}.j2"
+    dest: "{{ node_config_directory }}/{{ project_name }}/{{ item }}"
     mode: "0660"
-  with_first_found:
-    - "{{ node_custom_config }}/rabbitmq/{{ inventory_hostname }}/rabbitmq-env.conf"
-    - "{{ node_custom_config }}/rabbitmq/rabbitmq-env.conf"
-    - "rabbitmq-env.conf.j2"
+  become: true
+  register: rabbitmq_confs
   when:
     - inventory_hostname in groups[service.group]
     - service.enabled | bool
+  with_items:
+    - "rabbitmq-env.conf"
+    - "rabbitmq.config"
+    - "rabbitmq-clusterer.config"
+    - "definitions.json"
   notify:
     - Restart rabbitmq container
 
-- name: Copying over rabbitmq.conf
-  become: true
+- name: Bumping cluster version
   vars:
     service: "{{ rabbitmq_services['rabbitmq'] }}"
-  template:
-    src: "{{ item }}"
-    dest: "{{ node_config_directory }}/{{ project_name }}/rabbitmq.conf"
-    mode: "0660"
-  with_first_found:
-    - "{{ node_custom_config }}/rabbitmq/{{ inventory_hostname }}/rabbitmq.conf"
-    - "{{ node_custom_config }}/rabbitmq/rabbitmq.conf"
-    - "rabbitmq.conf.j2"
+  set_fact:
+    rabbitmq_cluster_version: "{{ rabbitmq_cluster_version | int + 1 }}"
   when:
     - inventory_hostname in groups[service.group]
     - service.enabled | bool
-  notify:
-    - Restart rabbitmq container
+    - rabbitmq_confs.changed | bool
+    - cluster_config['content'] is defined
 
-- name: Copying over erl_inetrc
-  become: true
+- name: Updating cluster version
   vars:
     service: "{{ rabbitmq_services['rabbitmq'] }}"
+    cluster_version: "{{ rabbitmq_cluster_version }}"
   template:
-    src: "{{ item }}"
-    dest: "{{ node_config_directory }}/{{ project_name }}/erl_inetrc"
+    src: "{{ item }}.j2"
+    dest: "{{ node_config_directory }}/{{ project_name }}/{{ item }}"
     mode: "0660"
-  with_first_found:
-    - "{{ node_custom_config }}/rabbitmq/{{ inventory_hostname }}/erl_inetrc"
-    - "{{ node_custom_config }}/rabbitmq/erl_inetrc"
-    - "erl_inetrc.j2"
+  become: true
   when:
     - inventory_hostname in groups[service.group]
     - service.enabled | bool
+    - rabbitmq_confs.changed | bool
+    - cluster_config['content'] is defined
+  with_items:
+    - "rabbitmq-clusterer.config"
   notify:
     - Restart rabbitmq container
 
-- name: Copying over advanced.config
+- name: Check rabbitmq containers
   become: true
-  vars:
-    service: "{{ rabbitmq_services['rabbitmq'] }}"
-  template:
-    src: "{{ item }}"
-    dest: "{{ node_config_directory }}/{{ project_name }}/advanced.config"
-    mode: "0660"
-  with_first_found:
-    - "{{ node_custom_config }}/rabbitmq/{{ inventory_hostname }}/advanced.config"
-    - "{{ node_custom_config }}/rabbitmq/advanced.config"
-    - "advanced.config.j2"
+  kolla_docker:
+    action: "compare_container"
+    common_options: "{{ docker_common_options }}"
+    name: "{{ item.value.container_name }}"
+    image: "{{ item.value.image }}"
+    volumes: "{{ item.value.volumes }}"
+    environment: "{{ item.value.environment }}"
+    dimensions: "{{ item.value.dimensions }}"
+  register: check_rabbitmq_containers
   when:
-    - inventory_hostname in groups[service.group]
-    - service.enabled | bool
+    - kolla_action != "config"
+    - inventory_hostname in groups[item.value.group]
+    - item.value.enabled | bool
+  with_dict: "{{ rabbitmq_services }}"
   notify:
     - Restart rabbitmq container
-
-- name: Copying over definitions.json
-  become: true
-  vars:
-    service: "{{ rabbitmq_services['rabbitmq'] }}"
-  template:
-    src: "{{ item }}"
-    dest: "{{ node_config_directory }}/{{ project_name }}/definitions.json"
-    mode: "0660"
-  with_first_found:
-    - "{{ node_custom_config }}/rabbitmq/{{ inventory_hostname }}/definitions.json"
-    - "{{ node_custom_config }}/rabbitmq/definitions.json"
-    - "definitions.json.j2"
-  when:
-    - inventory_hostname in groups[service.group]
-    - service.enabled | bool
-  notify:
-    - Restart rabbitmq container
-
-- name: Copying over enabled_plugins
-  become: true
-  vars:
-    service: "{{ rabbitmq_services['rabbitmq'] }}"
-  template:
-    src: "{{ item }}"
-    dest: "{{ node_config_directory }}/{{ project_name }}/enabled_plugins"
-    mode: "0660"
-  with_first_found:
-    - "{{ node_custom_config }}/rabbitmq/{{ inventory_hostname }}/enabled_plugins"
-    - "{{ node_custom_config }}/rabbitmq/enabled_plugins"
-    - "enabled_plugins.j2"
-  when:
-    - inventory_hostname in groups[service.group]
-    - service.enabled | bool
-  notify:
-    - Restart rabbitmq container
-
-- include_tasks: copy-certs.yml
-  when: rabbitmq_enable_tls | bool

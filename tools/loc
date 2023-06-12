@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 ANSIBLE=`find ansible -type f -exec cat {} \; | wc -l`
 DOCKER=`find docker -type f -exec cat {} \; | wc -l`

@@ -1,5 +1,0 @@
----
-features:
-  - |
-    Adds support for configuring the CloudKitty fetcher using
-    ``cloudkitty_fetcher_backend``.

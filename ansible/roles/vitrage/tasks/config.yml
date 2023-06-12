@@ -13,10 +13,8 @@
   with_dict: "{{ vitrage_services }}"
 
 - name: Check if policies shall be overwritten
-  stat:
-    path: "{{ item }}"
+  local_action: stat path="{{ item }}"
   run_once: True
-  delegate_to: localhost
   register: vitrage_policy
   with_first_found:
     - files: "{{ supported_policy_format_list }}"
@@ -31,22 +29,23 @@
   when:
     - vitrage_policy.results
 
-- include_tasks: copy-certs.yml
-  when:
-    - kolla_copy_ca_into_containers | bool
-
 - name: Copying over config.json files for services
   template:
     src: "{{ item.key }}.json.j2"
     dest: "{{ node_config_directory }}/{{ item.key }}/config.json"
-    mode: "0660"
+    mode: "0770"
   become: true
+  register: vitrage_config_jsons
   when:
     - inventory_hostname in groups[item.value.group]
     - item.value.enabled | bool
   with_dict: "{{ vitrage_services }}"
   notify:
-    - Restart {{ item.key }} container
+    - Restart vitrage-api container
+    - Restart vitrage-collector container
+    - Restart vitrage-notifier container
+    - Restart vitrage-graph container
+    - Restart vitrage-ml container
 
 - name: Copying over vitrage.conf
   vars:
@@ -60,51 +59,68 @@
       - "{{ node_config_directory }}/config/vitrage/{{ item.key }}.conf"
       - "{{ node_config_directory }}/config/vitrage/{{ inventory_hostname }}/vitrage.conf"
     dest: "{{ node_config_directory }}/{{ item.key }}/vitrage.conf"
-    mode: "0660"
+    mode: "0770"
   become: true
+  register: vitrage_confs
   when:
     - inventory_hostname in groups[item.value.group]
     - item.value.enabled | bool
   with_dict: "{{ vitrage_services }}"
   notify:
-    - Restart {{ item.key }} container
+    - Restart vitrage-api container
+    - Restart vitrage-collector container
+    - Restart vitrage-notifier container
+    - Restart vitrage-graph container
+    - Restart vitrage-ml container
 
 - name: Copying over wsgi-vitrage files for services
   template:
     src: "wsgi-vitrage.conf.j2"
     dest: "{{ node_config_directory }}/{{ item }}/wsgi-vitrage.conf"
-    mode: "0660"
+    mode: "0770"
   become: true
   with_items:
     - "vitrage-api"
   notify:
     - Restart vitrage-api container
 
-- name: Copying over prometheus_conf.yml file for service
-  vars:
-    service: "{{ vitrage_services['vitrage-graph'] }}"
-  template:
-    src: "{{ node_custom_config }}/vitrage/prometheus_conf.yaml"
-    dest: "{{ node_config_directory }}/vitrage-graph/prometheus_conf.yaml"
-    mode: "0660"
-  become: true
-  when:
-    - enable_vitrage_prometheus_datasource | bool
-    - inventory_hostname in groups[service.group]
-    - service.enabled | bool
-  notify:
-    - Restart vitrage-graph container
-
 - name: Copying over existing policy file
   template:
     src: "{{ vitrage_policy_file_path }}"
     dest: "{{ node_config_directory }}/{{ item.key }}/{{ vitrage_policy_file }}"
-    mode: "0660"
+    mode: "0770"
   become: true
+  register: vitrage_policy_overwriting
   when:
     - vitrage_policy_file is defined
     - inventory_hostname in groups[item.value.group]
     - item.value.enabled | bool
   with_dict: "{{ vitrage_services }}"
   notify:
-    - Restart {{ item.key }} container
+    - Restart vitrage-api container
+    - Restart vitrage-collector container
+    - Restart vitrage-graph container
+    - Restart vitrage-notifier container
+    - Restart vitrage-ml container
+
+- name: Check vitrage containers
+  become: true
+  kolla_docker:
+    action: "compare_container"
+    common_options: "{{ docker_common_options }}"
+    name: "{{ item.value.container_name }}"
+    image: "{{ item.value.image }}"
+    volumes: "{{ item.value.volumes | reject('equalto', '') | list }}"
+    dimensions: "{{ item.value.dimensions }}"
+  register: check_vitrage_containers
+  when:
+    - kolla_action != "config"
+    - inventory_hostname in groups[item.value.group]
+    - item.value.enabled | bool
+  with_dict: "{{ vitrage_services }}"
+  notify:
+    - Restart vitrage-api container
+    - Restart vitrage-collector container
+    - Restart vitrage-graph container
+    - Restart vitrage-notifier container
+    - Restart vitrage-ml container

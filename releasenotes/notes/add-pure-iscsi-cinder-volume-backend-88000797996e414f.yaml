@@ -1,5 +1,0 @@
----
-features:
-  - |
-    Allow cinder-volume to be configured to use Pure Storage FlashArray
-    with either the iSCSI or FC driver.

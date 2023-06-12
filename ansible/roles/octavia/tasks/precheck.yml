@@ -1,24 +1,15 @@
 ---
-- import_role:
-    name: service-precheck
-  vars:
-    service_precheck_services: "{{ octavia_services }}"
-    service_name: "{{ project_name }}"
-
 - name: Get container facts
-  become: true
   kolla_container_facts:
-    container_engine: "{{ kolla_container_engine }}"
     name:
       - octavia_api
       - octavia_health_manager
-  check_mode: false
   register: container_facts
 
 - name: Checking free port for Octavia API
   wait_for:
     host: "{{ api_interface_address }}"
-    port: "{{ octavia_api_listen_port }}"
+    port: "{{ octavia_api_port }}"
     connect_timeout: 1
     timeout: 1
     state: stopped
@@ -38,28 +29,12 @@
     - inventory_hostname in groups['octavia-health-manager']
 
 - name: Checking certificate files exist for octavia
-  stat:
-    path: "{{ node_custom_config }}/octavia/{{ item }}"
-  delegate_to: localhost
+  local_action: stat path="{{ node_custom_config }}/octavia/{{ item }}"
   run_once: True
   register: result
   failed_when: not result.stat.exists
-  when:
-    - inventory_hostname in groups['octavia-worker']
-    - "'amphora' in octavia_provider_drivers"
+  when: inventory_hostname in groups['octavia-worker']
   with_items:
-    - client.cert-and-key.pem
-    - client_ca.cert.pem
-    - server_ca.cert.pem
-    - server_ca.key.pem
-
-- name: Fail when Neutron plugin agent is not supported
-  fail:
-    msg: >
-      Neutron plugin agent {{ neutron_plugin_agent }} is not supported when
-      octavia_network_type is tenant, only openvswitch is supported currently
-  run_once: True
-  when:
-    - octavia_auto_configure | bool
-    - octavia_network_type == "tenant"
-    - neutron_plugin_agent != 'openvswitch'
+    - cakey.pem
+    - ca_01.pem
+    - client.pem

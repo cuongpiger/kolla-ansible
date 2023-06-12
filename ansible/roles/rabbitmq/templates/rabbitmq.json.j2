@@ -8,20 +8,14 @@
             "perm": "0600"
         },
         {
-            "source": "{{ container_config_directory }}/rabbitmq.conf",
-            "dest": "/etc/rabbitmq/rabbitmq.conf",
+            "source": "{{ container_config_directory }}/rabbitmq.config",
+            "dest": "/etc/rabbitmq/rabbitmq.config",
             "owner": "rabbitmq",
             "perm": "0600"
         },
         {
-            "source": "{{ container_config_directory }}/erl_inetrc",
-            "dest": "/etc/rabbitmq/erl_inetrc",
-            "owner": "rabbitmq",
-            "perm": "0600"
-        },
-        {
-            "source": "{{ container_config_directory }}/advanced.config",
-            "dest": "/etc/rabbitmq/advanced.config",
+            "source": "{{ container_config_directory }}/rabbitmq-clusterer.config",
+            "dest": "/etc/rabbitmq/rabbitmq-clusterer.config",
             "owner": "rabbitmq",
             "perm": "0600"
         },
@@ -30,25 +24,7 @@
             "dest": "/etc/rabbitmq/definitions.json",
             "owner": "rabbitmq",
             "perm": "0600"
-        },
-        {
-            "source": "{{ container_config_directory }}/enabled_plugins",
-            "dest": "/etc/rabbitmq/enabled_plugins",
-            "owner": "rabbitmq",
-            "perm": "0600"
-        }{% if rabbitmq_enable_tls | bool %},
-        {
-            "source": "{{ container_config_directory }}/{{ project_name }}-cert.pem",
-            "dest": "/etc/rabbitmq/certs/{{ project_name }}-cert.pem",
-            "owner": "rabbitmq",
-            "perm": "0600"
-        },
-        {
-            "source": "{{ container_config_directory }}/{{ project_name }}-key.pem",
-            "dest": "/etc/rabbitmq/certs/{{ project_name }}-key.pem",
-            "owner": "rabbitmq",
-            "perm": "0600"
-        }{% endif %}
+        }
     ],
     "permissions": [
         {
@@ -57,7 +33,7 @@
             "recurse": true
         },
         {
-            "path": "/var/log/kolla/{{ project_name }}",
+            "path": "/var/log/kolla/rabbitmq",
             "owner": "rabbitmq:rabbitmq",
             "recurse": true
         }

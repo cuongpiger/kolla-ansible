@@ -30,12 +30,16 @@ To enable dev mode for all supported services, set in
 
    kolla_dev_mode: true
 
+.. end
+
 To enable it just for heat, set:
 
 .. path /etc/kolla/globals.yml
 .. code-block:: yaml
 
    heat_dev_mode: true
+
+.. end
 
 Usage
 -----
@@ -50,6 +54,8 @@ After making code changes, simply restart the container to pick them up:
 
    docker restart heat_api
 
+.. end
+
 Debugging
 ---------
 
@@ -60,6 +66,8 @@ make sure it is installed in the container in question:
 
    docker exec -it -u root heat_api pip install remote_pdb
 
+.. end
+
 Then, set your breakpoint as follows:
 
 .. code-block:: python
@@ -67,12 +75,16 @@ Then, set your breakpoint as follows:
    from remote_pdb import RemotePdb
    RemotePdb('127.0.0.1', 4444).set_trace()
 
+.. end
+
 Once you run the code(restart the container), pdb can be accessed using
 ``socat``:
 
 .. code-block:: console
 
    socat readline tcp:127.0.0.1:4444
+
+.. end
 
 Learn more information about `remote_pdb
 <https://pypi.org/project/remote-pdb/>`_.

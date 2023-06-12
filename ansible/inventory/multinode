@@ -15,8 +15,22 @@ control03
 network01
 network02
 
-[compute]
+# inner-compute is the groups of compute nodes which do not have
+# external reachability.
+# DEPRECATED, the group will be removed in S release of OpenStack,
+# use variable neutron_compute_dvr_mode instead.
+[inner-compute]
+
+# external-compute is the groups of compute nodes which can reach
+# outside.
+# DEPRECATED, the group will be removed in S release of OpenStack,
+# use variable neutron_compute_dvr_mode instead.
+[external-compute]
 compute01
+
+[compute:children]
+inner-compute
+external-compute
 
 [monitoring]
 monitoring01
@@ -24,7 +38,7 @@ monitoring01
 # When compute nodes and control nodes use different interfaces,
 # you need to comment out "api_interface" and other interfaces from the globals.yml
 # and specify like below:
-#compute01 neutron_external_interface=eth0 api_interface=em1 tunnel_interface=em1
+#compute01 neutron_external_interface=eth0 api_interface=em1 storage_interface=em1 tunnel_interface=em1
 
 [storage]
 storage01
@@ -39,13 +53,12 @@ compute
 storage
 monitoring
 
-[tls-backend:children]
-control
-
 # You can explicitly specify which hosts run each project by updating the
 # groups in the sections below. Common services are grouped together.
+[chrony-server:children]
+haproxy
 
-[common:children]
+[chrony:children]
 control
 network
 compute
@@ -60,6 +73,7 @@ monitoring
 
 [etcd:children]
 control
+compute
 
 [influxdb:children]
 monitoring
@@ -70,6 +84,12 @@ monitoring
 [kafka:children]
 control
 
+[karbor:children]
+control
+
+[kibana:children]
+control
+
 [telegraf:children]
 compute
 control
@@ -77,14 +97,21 @@ monitoring
 network
 storage
 
-[hacluster:children]
+[elasticsearch:children]
 control
 
-[hacluster-remote:children]
-compute
-
-[loadbalancer:children]
+[haproxy:children]
 network
+
+[hyperv]
+#hyperv_host
+
+[hyperv:vars]
+#ansible_user=user
+#ansible_password=password
+#ansible_port=5986
+#ansible_connection=winrm
+#ansible_winrm_server_cert_validation=ignore
 
 [mariadb:children]
 control
@@ -93,6 +120,9 @@ control
 control
 
 [outward-rabbitmq:children]
+control
+
+[qdrouterd:children]
 control
 
 [monasca-agent:children]
@@ -107,6 +137,9 @@ monitoring
 
 [storm:children]
 monitoring
+
+[mongodb:children]
+control
 
 [keystone:children]
 control
@@ -124,6 +157,9 @@ network
 network
 compute
 manila-share
+
+[opendaylight:children]
+network
 
 [cinder:children]
 control
@@ -158,6 +194,9 @@ control
 [ironic:children]
 control
 
+[ceph:children]
+control
+
 [magnum:children]
 control
 
@@ -176,9 +215,11 @@ control
 [aodh:children]
 control
 
-[cyborg:children]
+[congress:children]
 control
-compute
+
+[panko:children]
+control
 
 [gnocchi:children]
 control
@@ -189,13 +230,26 @@ control
 [trove:children]
 control
 
+# Tempest
+[tempest:children]
+control
+
 [senlin:children]
+control
+
+[vmtp:children]
 control
 
 [vitrage:children]
 control
 
 [watcher:children]
+control
+
+[rally:children]
+control
+
+[searchlight:children]
 control
 
 [octavia:children]
@@ -216,17 +270,14 @@ control
 [zun:children]
 control
 
-[skyline:children]
-control
+[skydive:children]
+monitoring
 
 [redis:children]
 control
 
 [blazar:children]
 control
-
-[venus:children]
-monitoring
 
 # Additional control implemented here. These groups allow you to control which
 # services run on which hosts at a per-service level.
@@ -235,28 +286,11 @@ monitoring
 # function appropriately. For example, neutron-metadata-agent must run on the
 # same host as the l3-agent and (depending on configuration) the dhcp-agent.
 
-# Common
-[cron:children]
-common
-
-[fluentd:children]
-common
-
-[kolla-logs:children]
-common
-
-[kolla-toolbox:children]
-common
-
-[opensearch:children]
-control
-
-# Opensearch dashboards
-[opensearch-dashboards:children]
-opensearch
-
 # Glance
 [glance-api:children]
+glance
+
+[glance-registry:children]
 glance
 
 # Nova
@@ -266,7 +300,7 @@ nova
 [nova-conductor:children]
 nova
 
-[nova-super-conductor:children]
+[nova-consoleauth:children]
 nova
 
 [nova-novncproxy:children]
@@ -294,12 +328,11 @@ neutron
 [neutron-l3-agent:children]
 neutron
 
-[neutron-metadata-agent:children]
+[neutron-lbaas-agent:children]
 neutron
 
-[neutron-ovn-metadata-agent:children]
-compute
-network
+[neutron-metadata-agent:children]
+neutron
 
 [neutron-bgp-dragent:children]
 neutron
@@ -307,11 +340,27 @@ neutron
 [neutron-infoblox-ipam-agent:children]
 neutron
 
-[neutron-metering-agent:children]
-neutron
-
 [ironic-neutron-agent:children]
 neutron
+
+# Ceph
+[ceph-mds:children]
+ceph
+
+[ceph-mgr:children]
+ceph
+
+[ceph-nfs:children]
+ceph
+
+[ceph-mon:children]
+ceph
+
+[ceph-rgw:children]
+ceph
+
+[ceph-osd:children]
+storage
 
 # Cinder
 [cinder-api:children]
@@ -348,6 +397,16 @@ ironic
 
 [tgtd:children]
 storage
+
+# Karbor
+[karbor-api:children]
+karbor
+
+[karbor-protection:children]
+karbor
+
+[karbor-operationengine:children]
+karbor
 
 # Manila
 [manila-api:children]
@@ -415,6 +474,15 @@ monasca-agent
 [monasca-api:children]
 monasca
 
+[monasca-grafana:children]
+monasca
+
+[monasca-log-api:children]
+monasca
+
+[monasca-log-transformer:children]
+monasca
+
 [monasca-log-persister:children]
 monasca
 
@@ -447,10 +515,10 @@ ironic
 [ironic-inspector:children]
 ironic
 
-[ironic-tftp:children]
+[ironic-pxe:children]
 ironic
 
-[ironic-http:children]
+[ironic-ipxe:children]
 ironic
 
 # Magnum
@@ -480,12 +548,6 @@ solum
 [solum-conductor:children]
 solum
 
-[solum-application-deployment:children]
-solum
-
-[solum-image-builder:children]
-solum
-
 # Mistral
 [mistral-api:children]
 mistral
@@ -496,9 +558,6 @@ mistral
 [mistral-engine:children]
 mistral
 
-[mistral-event-engine:children]
-mistral
-
 # Ceilometer
 [ceilometer-central:children]
 ceilometer
@@ -507,9 +566,6 @@ ceilometer
 ceilometer
 
 [ceilometer-compute:children]
-compute
-
-[ceilometer-ipmi:children]
 compute
 
 # Aodh
@@ -525,15 +581,19 @@ aodh
 [aodh-notifier:children]
 aodh
 
-# Cyborg
-[cyborg-api:children]
-cyborg
+# Congress
+[congress-api:children]
+congress
 
-[cyborg-agent:children]
-compute
+[congress-datasource:children]
+congress
 
-[cyborg-conductor:children]
-cyborg
+[congress-policy-engine:children]
+congress
+
+# Panko
+[panko-api:children]
+panko
 
 # Gnocchi
 [gnocchi-api:children]
@@ -574,20 +634,18 @@ watcher
 [senlin-api:children]
 senlin
 
-[senlin-conductor:children]
-senlin
-
 [senlin-engine:children]
 senlin
 
-[senlin-health-manager:children]
-senlin
+# Searchlight
+[searchlight-api:children]
+searchlight
+
+[searchlight-listener:children]
+searchlight
 
 # Octavia
 [octavia-api:children]
-octavia
-
-[octavia-driver-agent:children]
 octavia
 
 [octavia-health-manager:children]
@@ -635,15 +693,13 @@ zun
 [zun-compute:children]
 compute
 
-[zun-cni-daemon:children]
+# Skydive
+[skydive-analyzer:children]
+skydive
+
+[skydive-agent:children]
 compute
-
-# Skyline
-[skyline-apiserver:children]
-skyline
-
-[skyline-console:children]
-skyline
+network
 
 # Tacker
 [tacker-server:children]
@@ -662,10 +718,10 @@ vitrage
 [vitrage-graph:children]
 vitrage
 
-[vitrage-ml:children]
+[vitrage-collector:children]
 vitrage
 
-[vitrage-persistor:children]
+[vitrage-ml:children]
 vitrage
 
 # Blazar
@@ -687,7 +743,7 @@ storage
 mariadb
 
 [prometheus-haproxy-exporter:children]
-loadbalancer
+haproxy
 
 [prometheus-memcached-exporter:children]
 memcached
@@ -701,58 +757,3 @@ storage
 
 [prometheus-alertmanager:children]
 monitoring
-
-[prometheus-openstack-exporter:children]
-monitoring
-
-[prometheus-elasticsearch-exporter:children]
-opensearch
-
-[prometheus-blackbox-exporter:children]
-monitoring
-
-[prometheus-libvirt-exporter:children]
-compute
-
-[prometheus-msteams:children]
-prometheus-alertmanager
-
-[masakari-api:children]
-control
-
-[masakari-engine:children]
-control
-
-[masakari-hostmonitor:children]
-control
-
-[masakari-instancemonitor:children]
-compute
-
-[ovn-controller:children]
-ovn-controller-compute
-ovn-controller-network
-
-[ovn-controller-compute:children]
-compute
-
-[ovn-controller-network:children]
-network
-
-[ovn-database:children]
-control
-
-[ovn-northd:children]
-ovn-database
-
-[ovn-nb-db:children]
-ovn-database
-
-[ovn-sb-db:children]
-ovn-database
-
-[venus-api:children]
-venus
-
-[venus-manager:children]
-venus

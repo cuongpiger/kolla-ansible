@@ -21,6 +21,6 @@
     labels:
       BOOTSTRAP:
     name: "{{ project_name }}_bootstrap"
-    restart_policy: no
+    restart_policy: "never"
     volumes: "{{ service.volumes }}"
-  when: rabbitmq_volume is changed
+  when: rabbitmq_volume | changed

@@ -1,10 +1,24 @@
 ---
-- import_tasks: register.yml
+- include_tasks: register.yml
+  when: inventory_hostname in groups['swift-account-server'] or
+        inventory_hostname in groups['swift-container-server'] or
+        inventory_hostname in groups['swift-object-server'] or
+        inventory_hostname in groups['swift-proxy-server']
 
-- import_tasks: config.yml
+- include_tasks: config.yml
+  when: inventory_hostname in groups['swift-account-server'] or
+        inventory_hostname in groups['swift-container-server'] or
+        inventory_hostname in groups['swift-object-server'] or
+        inventory_hostname in groups['swift-proxy-server']
 
-- import_tasks: start.yml
-  vars:
-    run_start_swift_proxy_server: "yes"
+- include_tasks: start.yml
+  when: inventory_hostname in groups['swift-account-server'] or
+        inventory_hostname in groups['swift-container-server'] or
+        inventory_hostname in groups['swift-object-server'] or
+        inventory_hostname in groups['swift-proxy-server']
 
-- import_tasks: check.yml
+- include_tasks: check.yml
+  when: inventory_hostname in groups['swift-account-server'] or
+        inventory_hostname in groups['swift-container-server'] or
+        inventory_hostname in groups['swift-object-server'] or
+        inventory_hostname in groups['swift-proxy-server']

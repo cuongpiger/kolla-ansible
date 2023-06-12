@@ -7,7 +7,7 @@ Running tests
 Kolla-ansible contains a suit of tests in the ``tests`` directory.
 
 Any proposed code change in gerrit is automatically rejected by the
-`Zuul CI system <https://docs.openstack.org/infra/system-config/zuulv3.html>`__
+`OpenStack Jenkins server <https://docs.openstack.org/infra/system-config/jjb.html>`__
 if the change causes test failures.
 
 It is recommended for developers to run the test suite before submitting patch
@@ -18,40 +18,41 @@ Preferred way to run the tests
 
 The preferred way to run the unit tests is using ``tox``. It executes tests in
 isolated environment, by creating separate virtualenv and installing
-dependencies from the ``requirements.txt``, ``test-requirements.txt`` and
-``doc/requirements.txt`` files, so the only package you install is ``tox``
-itself:
+dependencies from the ``requirements.txt`` and ``test-requirements.txt`` files,
+so the only package you install is ``tox`` itself:
 
 .. code-block:: console
 
    pip install tox
 
+.. end
+
 For more information, see `the unit testing section of the Testing wiki page
 <https://wiki.openstack.org/wiki/Testing#Unit_Tests>`_. For example:
 
-To run the default set of tests:
+To run the Python 2.7 tests:
 
 .. code-block:: console
 
-   tox
+   tox -e py27
 
-To run the Python 3.8 tests:
-
-.. code-block:: console
-
-   tox -e py38
+.. end
 
 To run the style tests:
 
 .. code-block:: console
 
-   tox -e linters
+   tox -e pep8
+
+.. end
 
 To run multiple tests separate items by commas:
 
 .. code-block:: console
 
-   tox -e py38,linters
+   tox -e py27,py35,pep8
+
+.. end
 
 Running a subset of tests
 -------------------------
@@ -65,28 +66,36 @@ directory use:
 
 .. code-block:: console
 
-   tox -e py38 kolla-ansible.tests
+   tox -e py27 kolla-ansible.tests
+
+.. end
 
 To run the tests of a specific file
 ``kolla-ansible/tests/test_kolla_docker.py``:
 
 .. code-block:: console
 
-   tox -e py38 test_kolla_docker
+   tox -e py27 test_kolla_docker
+
+.. end
 
 To run the tests in the ``ModuleArgsTest`` class in
 the ``kolla-ansible/tests/test_kolla_docker.py`` file:
 
 .. code-block:: console
 
-   tox -e py38 test_kolla_docker.ModuleArgsTest
+   tox -e py27 test_kolla_docker.ModuleArgsTest
+
+.. end
 
 To run the ``ModuleArgsTest.test_module_args`` test method in
 the ``kolla-ansible/tests/test_kolla_docker.py`` file:
 
 .. code-block:: console
 
-   tox -e py38 test_kolla_docker.ModuleArgsTest.test_module_args
+   tox -e py27 test_kolla_docker.ModuleArgsTest.test_module_args
+
+.. end
 
 Debugging unit tests
 --------------------
@@ -98,6 +107,8 @@ a breaking point to the code:
 
    import pdb; pdb.set_trace()
 
+.. end
+
 Then run ``tox`` with the debug environment as one of the following:
 
 .. code-block:: console
@@ -105,5 +116,8 @@ Then run ``tox`` with the debug environment as one of the following:
    tox -e debug
    tox -e debug test_file_name.TestClass.test_name
 
-For more information, see the :oslotest-doc:`oslotest documentation
-<user/features.html#debugging-with-oslo-debug-helper>`.
+.. end
+
+For more information, see the `oslotest documentation
+<https://docs.openstack.org/oslotest/latest/user/features.html#debugging-with-oslo-debug-helper>`_.
+

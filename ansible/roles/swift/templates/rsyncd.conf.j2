@@ -1,4 +1,4 @@
-address = {{ 'swift_replication' | kolla_address }}
+address = {{ api_interface_address }}
 
 {% if inventory_hostname in groups['swift-account-server'] %}
 [account]

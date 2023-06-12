@@ -4,7 +4,11 @@
 {% if enable_neutron_dvr | bool %}
 {% if inventory_hostname in groups['network'] %}
 agent_mode = dvr_snat
-{% else %}
+{% elif inventory_hostname in groups['external-compute'] %}
+agent_mode = dvr
+{% elif inventory_hostname in groups['inner-compute'] %}
+agent_mode = dvr_no_external
+{% elif inventory_hostname in groups['compute'] %}
 agent_mode = {{ neutron_compute_dvr_mode }}
 {% endif %}
 {% else %}
@@ -26,8 +30,6 @@ enable_detailed_logging = {{ neutron_logging_debug }}
 vpn_device_driver = {{ vpn_device_driver }}
 {% endif %}
 
-{% if neutron_plugin_agent in ['openvswitch', 'ovn'] %}
 [ovs]
+ovsdb_interface = native
 ovsdb_connection = tcp:127.0.0.1:{{ ovsdb_port }}
-ovsdb_timeout = {{ ovsdb_timeout }}
-{% endif %}

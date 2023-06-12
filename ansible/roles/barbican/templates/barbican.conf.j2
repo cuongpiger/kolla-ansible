@@ -1,15 +1,13 @@
 [DEFAULT]
 debug = {{ barbican_logging_debug }}
 log_dir = /var/log/kolla/barbican
-{% if service_name == "barbican-api" %}
-log_file = barbican-api.log
-{% endif %}
 
-bind_port = {{ barbican_api_listen_port }}
+bind_port = {{ barbican_api_port }}
 bind_host = {{ api_interface_address }}
-host_href = {{ barbican_public_endpoint }}
-
+host_href = {{ public_protocol }}://{{ kolla_external_fqdn }}:{{ barbican_api_port }}
 backlog = 4096
+max_allowed_secret_in_bytes = 10000
+max_allowed_request_size_in_bytes = 1000000
 
 db_auto_create = False
 sql_connection = mysql+pymysql://{{ barbican_database_user }}:{{ barbican_database_password }}@{{ barbican_database_address }}/{{ barbican_database_name }}
@@ -48,45 +46,33 @@ kek = '{{ barbican_crypto_key }}'
 
 [keystone_notifications]
 enable = True
-{% if enable_keystone | bool %}
-topic = barbican_notifications
-{% endif %}
 
 [keystone_authtoken]
-service_type = key-manager
-www_authenticate_uri = {{ keystone_internal_url }}
+www_authenticate_uri = {{ internal_protocol }}://{{ kolla_internal_fqdn }}:{{ keystone_public_port }}
 project_domain_id = {{ default_project_domain_id }}
 project_name = service
 user_domain_id = {{ default_user_domain_id }}
 username = {{ barbican_keystone_user }}
 password = {{ barbican_keystone_password }}
-auth_url = {{ keystone_internal_url }}
+auth_url = {{ admin_protocol }}://{{ kolla_internal_fqdn }}:{{ keystone_admin_port }}
 auth_type = password
-cafile = {{ openstack_cacert }}
-region_name = {{ openstack_region_name }}
 
 memcache_security_strategy = ENCRYPT
 memcache_secret_key = {{ memcache_secret_key }}
-memcached_servers = {% for host in groups['memcached'] %}{{ 'api' | kolla_address(host) | put_address_in_context('memcache') }}:{{ memcached_port }}{% if not loop.last %},{% endif %}{% endfor %}
+memcached_servers = {% for host in groups['memcached'] %}{{ hostvars[host]['ansible_' + hostvars[host]['api_interface']]['ipv4']['address'] }}:{{ memcached_port }}{% if not loop.last %},{% endif %}{% endfor %}
+
+[service_credentials]
+auth_url = {{ internal_protocol  }}://{{ kolla_internal_fqdn }}:{{ keystone_public_port }}
+region_name = {{ openstack_region_name }}
+password = {{ barbican_keystone_password }}
+username = {{ barbican_keystone_user }}
+project_name = service
+project_domain_id = {{ default_project_domain_id }}
+user_domain_id = {{ default_user_domain_id }}
+auth_type = password
 
 [oslo_messaging_notifications]
 transport_url = {{ notify_transport_url }}
-{% if barbican_enabled_notification_topics %}
-driver = messagingv2
-topics = {{ barbican_enabled_notification_topics | map(attribute='name') | join(',') }}
-{% else %}
-driver = noop
-{% endif %}
-
-[oslo_messaging_rabbit]
-heartbeat_in_pthread = false
-{% if om_enable_rabbitmq_tls | bool %}
-ssl = true
-ssl_ca_file = {{ om_rabbitmq_cacert }}
-{% endif %}
-{% if om_enable_rabbitmq_high_availability | bool %}
-amqp_durable_queues = true
-{% endif %}
 
 [oslo_middleware]
 enable_proxy_headers_parsing = True

@@ -1,14 +1,17 @@
 ---
-- import_tasks: register.yml
+- include_tasks: register.yml
+  when: inventory_hostname in groups['trove-api']
 
-- import_tasks: config.yml
-
-- import_tasks: check-containers.yml
+- include_tasks: config.yml
+  when: inventory_hostname in groups['trove-api'] or
+        inventory_hostname in groups['trove-conductor'] or
+        inventory_hostname in groups['trove-taskmanager']
 
 - include_tasks: clone.yml
   when: trove_dev_mode | bool
 
-- import_tasks: bootstrap.yml
+- include_tasks: bootstrap.yml
+  when: inventory_hostname in groups['trove-api']
 
 - name: Flush handlers
   meta: flush_handlers

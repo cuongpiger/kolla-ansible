@@ -11,26 +11,19 @@
     - "swift"
     - "swift-account-auditor"
     - "swift-account-reaper"
-    - "swift-account-replication-server"
     - "swift-account-replicator"
     - "swift-account-server"
     - "swift-container-auditor"
-    - "swift-container-replication-server"
     - "swift-container-replicator"
     - "swift-container-server"
     - "swift-container-updater"
     - "swift-object-auditor"
     - "swift-object-expirer"
-    - "swift-object-replication-server"
     - "swift-object-replicator"
     - "swift-object-server"
     - "swift-object-updater"
     - "swift-proxy-server"
     - "swift-rsyncd"
-
-- include_tasks: copy-certs.yml
-  when:
-    - kolla_copy_ca_into_containers | bool
 
 - name: Copying over config.json files for services
   template:
@@ -41,17 +34,14 @@
   with_items:
     - "swift-account-auditor"
     - "swift-account-reaper"
-    - "swift-account-replication-server"
     - "swift-account-replicator"
     - "swift-account-server"
     - "swift-container-auditor"
-    - "swift-container-replication-server"
     - "swift-container-replicator"
     - "swift-container-server"
     - "swift-container-updater"
     - "swift-object-auditor"
     - "swift-object-expirer"
-    - "swift-object-replication-server"
     - "swift-object-replicator"
     - "swift-object-server"
     - "swift-object-updater"
@@ -74,17 +64,14 @@
   with_items:
     - "account-auditor"
     - "account-reaper"
-    - "account-replication-server"
     - "account-replicator"
     - "account-server"
     - "container-auditor"
-    - "container-replication-server"
     - "container-replicator"
     - "container-server"
     - "container-updater"
     - "object-auditor"
     - "object-expirer"
-    - "object-replication-server"
     - "object-replicator"
     - "object-server"
     - "object-updater"
@@ -107,7 +94,6 @@
   with_items:
     - "account-auditor"
     - "account-reaper"
-    - "account-replication-server"
     - "account-replicator"
     - "account-server"
 
@@ -127,7 +113,6 @@
   when: inventory_hostname in groups['swift-container-server']
   with_items:
     - "container-auditor"
-    - "container-replication-server"
     - "container-replicator"
     - "container-server"
     - "container-updater"
@@ -149,7 +134,6 @@
   with_items:
     - "object-auditor"
     - "object-expirer"
-    - "object-replication-server"
     - "object-replicator"
     - "object-server"
     - "object-updater"
@@ -194,12 +178,9 @@
     - "container.ring.gz"
     - "object.builder"
     - "object.ring.gz"
-    - "{{ swift_extra_ring_files }}"
 
 - name: Check if policies shall be overwritten
-  stat:
-    path: "{{ node_custom_config }}/swift/policy.json"
-  delegate_to: localhost
+  local_action: stat path="{{ node_custom_config }}/swift/policy.json"
   run_once: True
   register: swift_policy
 
@@ -211,17 +192,14 @@
   with_items:
     - "swift-account-auditor"
     - "swift-account-reaper"
-    - "swift-account-replication-server"
     - "swift-account-replicator"
     - "swift-account-server"
     - "swift-container-auditor"
-    - "swift-container-replication-server"
     - "swift-container-replicator"
     - "swift-container-server"
     - "swift-container-updater"
     - "swift-object-auditor"
     - "swift-object-expirer"
-    - "swift-object-replication-server"
     - "swift-object-replicator"
     - "swift-object-server"
     - "swift-object-updater"

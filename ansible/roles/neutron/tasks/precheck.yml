@@ -1,23 +1,14 @@
 ---
-- import_role:
-    name: service-precheck
-  vars:
-    service_precheck_services: "{{ neutron_services }}"
-    service_name: "{{ project_name }}"
-
 - name: Get container facts
-  become: true
   kolla_container_facts:
-    container_engine: "{{ kolla_container_engine }}"
     name:
       - neutron_server
-  check_mode: false
   register: container_facts
 
 - name: Checking free port for Neutron Server
   wait_for:
     host: "{{ api_interface_address }}"
-    port: "{{ neutron_server_listen_port }}"
+    port: "{{ neutron_server_port }}"
     connect_timeout: 1
     timeout: 1
     state: stopped
@@ -26,30 +17,46 @@
     - inventory_hostname in groups['neutron-server']
 
 - name: Checking number of network agents
-  assert:
-    that:
-      - groups['neutron-dhcp-agent'] | length > 1
-      - groups['neutron-l3-agent'] | length > 1
-    fail_msg: "Number of network agents are less than two when enabling agent ha"
+  local_action: fail msg="Number of network agents are less than two when enabling agent ha"
   changed_when: false
   run_once: True
   when:
     - enable_neutron_agent_ha | bool
+    - groups['neutron-dhcp-agent'] | length < 2
+      or groups['neutron-l3-agent'] | length < 2
+
+# When MountFlags is set to shared, a signal bit configured on 20th bit of a number
+# We need to check the 20th bit. 2^20 = 1048576. So we are validating against it.
+# In some systems MountFlags on the Docker service is set to 'shared', whereas
+# in others it's set to the decimal value of the 20th bit. This now checks for both
+# values. Either '1048576' or 'shared' will pass the precheck.
+- name: Checking if 'MountFlags' for docker service is set to 'shared'
+  command: systemctl show docker
+  register: result
+  changed_when: false
+  failed_when: result.stdout.find('MountFlags=1048576') == -1 and result.stdout.find('MountFlags=shared') == -1
+  when:
+    - (inventory_hostname in groups['neutron-dhcp-agent']
+       or inventory_hostname in groups['neutron-l3-agent']
+       or inventory_hostname in groups['neutron-metadata-agent'])
+    - ansible_os_family == 'RedHat' or ansible_distribution == 'Ubuntu'
 
 - name: Checking tenant network types
-  assert:
-    that: item in type_drivers
-    fail_msg: "Tenant network type '{{ item }}' is not in type drivers [{{ neutron_type_drivers }}]"
-  with_items: "{{ tenant_network_types }}"
   vars:
     type_drivers: "{{ neutron_type_drivers.replace(' ', '').split(',') | reject('equalto', '') | list }}"
     tenant_network_types: "{{ neutron_tenant_network_types.replace(' ', '').split(',') | reject('equalto', '') | list }}"
+  local_action: fail msg="Tenant network type '{{ item }}' is not in type drivers [{{ neutron_type_drivers }}]"
+  changed_when: false
+  when: item not in type_drivers
   run_once: true
+  with_items: "{{ tenant_network_types }}"
 
-- name: Checking whether Ironic enabled
-  assert:
-    that: enable_ironic | bool
-    fail_msg: "Ironic must be enabled when using networking-baremetal/ironic-neutron-agent"
+- name: Checking for deprecated inner- and external-compute groups
+  local_action:
+    module: debug
+    msg: "WARNING: inner- and external-compute groups are DEPRECATED"
+  changed_when: false
   run_once: True
   when:
-    - enable_ironic_neutron_agent | bool
+    - (groups['inner-compute'] | default([]) | length > 0
+       or groups['external-compute'] | default([]) | length > 0)

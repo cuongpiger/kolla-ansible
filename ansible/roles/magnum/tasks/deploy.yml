@@ -1,14 +1,16 @@
 ---
-- import_tasks: register.yml
+- include_tasks: register.yml
+  when: inventory_hostname in groups['magnum-api']
 
-- import_tasks: config.yml
-
-- import_tasks: check-containers.yml
+- include_tasks: config.yml
+  when: inventory_hostname in groups['magnum-api'] or
+        inventory_hostname in groups['magnum-conductor']
 
 - include_tasks: clone.yml
   when: magnum_dev_mode | bool
 
-- import_tasks: bootstrap.yml
+- include_tasks: bootstrap.yml
+  when: inventory_hostname in groups['magnum-api']
 
 - name: Flush handlers
   meta: flush_handlers

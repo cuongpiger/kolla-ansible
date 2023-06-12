@@ -14,7 +14,7 @@
     labels:
       BOOTSTRAP:
     name: "bootstrap_cinder"
-    restart_policy: no
-    volumes: "{{ cinder_api.volumes | reject('equalto', '') | list }}"
+    restart_policy: "never"
+    volumes: "{{ cinder_api.volumes|reject('equalto', '')|list }}"
   run_once: True
   delegate_to: "{{ groups[cinder_api.group][0] }}"

@@ -21,10 +21,6 @@ import re
 import sys
 
 import jinja2
-import yaml
-
-
-from kolla_ansible.put_address_in_context import put_address_in_context
 
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -35,22 +31,6 @@ NEWLINE_EOF_EXCLUDE_PATTERNS = ['.tox', '.testrepository', '.git']
 # Render json file by using jinja2 template is OK
 JSON_J2_INCLUDE_PATTERNS = ['*.json.j2', '*.json']
 JSON_J2_EXCLUDE_PATTERNS = ['.tox', '.testrepository', '.git']
-
-YAML_INCLUDE_PATTERNS = ['*.yml']
-YAML_EXCLUDE_PATTERNS = ['.tox', '.testrepository', '.git',
-                         'defaults', 'templates', 'vars']
-
-KOLLA_NETWORKS = [
-    'api',
-    'storage',
-    'swift_storage',
-    'swift_replication',
-    'migration',
-    'tunnel',
-    'octavia_network',
-    'bifrost_network',
-    'dns',  # designate
-]
 
 logging.basicConfig()
 LOG = logging.getLogger(__name__)
@@ -93,15 +73,6 @@ def check_json_j2():
     def basename_filter(text):
         return text.split('\\')[-1]
 
-    def kolla_address_filter_mock(network_name, hostname=None):
-        # no validation is possible for the hostname
-
-        if network_name not in KOLLA_NETWORKS:
-            raise ValueError("{network_name} not in KOLLA_NETWORKS"
-                             .format(network_name=network_name))
-
-        return "127.0.0.1"
-
     # Mock ansible hostvars variable, which is a nested dict
     def hostvars():
         return collections.defaultdict(hostvars)
@@ -115,22 +86,14 @@ def check_json_j2():
             loader=jinja2.FileSystemLoader(root))
         env.filters['bool'] = bool_filter
         env.filters['basename'] = basename_filter
-        env.filters['kolla_address'] = kolla_address_filter_mock
-        env.filters['put_address_in_context'] = \
-            put_address_in_context
         template = env.get_template(filename)
         # Mock ansible variables.
         context = {
             'hostvars': hostvars(),
             'groups': groups(),
-            'inventory_hostname': 'hostname',
-            'api_interface_address': '',
-            'kolla_internal_fqdn': '',
-            'octavia_provider_drivers': '',
-            'rabbitmq_ha_replica_count': 2,
-            'rabbitmq_message_ttl_ms': 600000,
-            'rabbitmq_queue_expiry_ms': 3600000,
-
+            'cluster_interface': 'cluster_interface',
+            'storage_interface': 'storage_interface',
+            'inventory_hostname': 'hostname'
         }
         data = template.render(**context)
         json.loads(data)
@@ -148,58 +111,12 @@ def check_json_j2():
     return return_code
 
 
-def check_docker_become():
-    """All tasks that use Docker should have 'become: true'."""
-    includes = r'|'.join([fnmatch.translate(x)
-                          for x in YAML_INCLUDE_PATTERNS])
-    excludes = r'|'.join([fnmatch.translate(x)
-                          for x in YAML_EXCLUDE_PATTERNS])
-    docker_modules = ('kolla_docker', 'kolla_container_facts', 'kolla_toolbox')
-    cmd_modules = ('command', 'shell')
-    return_code = 0
-    roles_path = os.path.join(PROJECT_ROOT, 'ansible', 'roles')
-    for root, dirs, files in os.walk(roles_path):
-        dirs[:] = [d for d in dirs if not re.match(excludes, d)]
-        for filename in files:
-            if not re.match(excludes, filename) and \
-                    re.match(includes, filename):
-                fullpath = os.path.join(root, filename)
-                with open(fullpath) as fp:
-                    tasks = yaml.safe_load(fp)
-                tasks = tasks or []
-                for task in tasks:
-                    for module in docker_modules:
-                        if module in task and not task.get('become'):
-                            return_code = 1
-                            LOG.error("Use of %s module without become in "
-                                      "task %s in %s",
-                                      module, task['name'], fullpath)
-                    for module in cmd_modules:
-                        docker_without_become = False
-                        if (module in task and not task.get('become')):
-                            if (isinstance(task[module], str) and
-                                    (task[module]).startswith('docker')):
-                                docker_without_become = True
-                            if (isinstance(task[module], dict) and
-                                    task[module]['cmd'].startswith('docker')):
-                                docker_without_become = True
-                            if docker_without_become:
-                                return_code = 1
-                                LOG.error("Use of docker in %s module without "
-                                          "become in task %s in %s",
-                                          module, task['name'], fullpath)
-
-    return return_code
-
-
 def main():
     checks = (
         check_newline_eof,
-        check_json_j2,
-        check_docker_become,
+        check_json_j2
     )
     return sum([check() for check in checks])
-
 
 if __name__ == "__main__":
     sys.exit(main())

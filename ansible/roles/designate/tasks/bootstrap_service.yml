@@ -14,7 +14,7 @@
     labels:
       BOOTSTRAP:
     name: "bootstrap_designate"
-    restart_policy: no
-    volumes: "{{ designate_central.volumes | reject('equalto', '') | list }}"
+    restart_policy: "never"
+    volumes: "{{ designate_central.volumes|reject('equalto', '')|list }}"
   run_once: True
   delegate_to: "{{ groups[designate_central.group][0] }}"

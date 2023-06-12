@@ -1,6 +1,6 @@
-{{ cron_logrotate_rotation_interval }}
+weekly
 
-rotate {{ cron_logrotate_rotation_count }}
+rotate 6
 
 copytruncate
 
@@ -12,13 +12,10 @@ notifempty
 
 missingok
 
-minsize {{ cron_logrotate_log_minsize }}
+minsize 30M
 
-maxsize {{ cron_logrotate_log_maxsize }}
+maxsize 100M
 
 su root kolla
 
-{% for service in cron_logrotate_enabled_services %}
-{% include "cron-logrotate-" ~ service ~ ".conf.j2" %}
-
-{% endfor %}
+include /etc/logrotate.d

@@ -1,11 +1,9 @@
 ---
-- import_tasks: config.yml
+- include_tasks: config.yml
 
-- import_tasks: check-containers.yml
-
-- import_tasks: bootstrap_service.yml
+- include_tasks: bootstrap_service.yml
 
 - name: Flush handlers
   meta: flush_handlers
 
-- import_tasks: import_library_packages.yml
+- include_tasks: import_library_packages.yml

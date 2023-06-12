@@ -13,10 +13,8 @@
   with_dict: "{{ blazar_services }}"
 
 - name: Check if policies shall be overwritten
-  stat:
-    path: "{{ item }}"
+  local_action: stat path="{{ item }}"
   run_once: True
-  delegate_to: localhost
   register: blazar_policy
   with_first_found:
     - files: "{{ supported_policy_format_list }}"
@@ -31,22 +29,20 @@
   when:
     - blazar_policy.results
 
-- include_tasks: copy-certs.yml
-  when:
-    - kolla_copy_ca_into_containers | bool
-
 - name: Copying over config.json files for services
   template:
     src: "{{ item.key }}.json.j2"
     dest: "{{ node_config_directory }}/{{ item.key }}/config.json"
     mode: "0660"
   become: true
+  register: blazar_config_jsons
   when:
     - item.value.enabled | bool
     - inventory_hostname in groups[item.value.group]
   with_dict: "{{ blazar_services }}"
   notify:
-    - Restart {{ item.key }} container
+    - Restart blazar-api container
+    - Restart blazar-manager container
 
 - name: Copying over blazar.conf
   vars:
@@ -61,12 +57,14 @@
     dest: "{{ node_config_directory }}/{{ item.key }}/blazar.conf"
     mode: "0660"
   become: true
+  register: blazar_confs
   when:
     - item.value.enabled | bool
     - inventory_hostname in groups[item.value.group]
   with_dict: "{{ blazar_services }}"
   notify:
-    - Restart {{ item.key }} container
+    - Restart blazar-api container
+    - Restart blazar-manager container
 
 - name: Copying over existing policy file
   template:
@@ -74,10 +72,30 @@
     dest: "{{ node_config_directory }}/{{ item.key }}/{{ blazar_policy_file }}"
     mode: "0660"
   become: true
+  register: blazar_policy_overwriting
   when:
     - blazar_policy_file is defined
+    - inventory_hostname in groups[item.value.group]
+  with_dict: "{{ blazar_services }}"
+  notify:
+    - Restart blazar-api container
+    - Restart blazar-manager container
+
+- name: Check blazar containers
+  become: true
+  kolla_docker:
+    action: "compare_container"
+    common_options: "{{ docker_common_options }}"
+    name: "{{ item.value.container_name }}"
+    image: "{{ item.value.image }}"
+    volumes: "{{ item.value.volumes|reject('equalto', '')|list }}"
+    dimensions: "{{ item.value.dimensions }}"
+  register: check_blazar_containers
+  when:
+    - kolla_action != "config"
     - inventory_hostname in groups[item.value.group]
     - item.value.enabled | bool
   with_dict: "{{ blazar_services }}"
   notify:
-    - Restart {{ item.key }} container
+    - Restart blazar-api container
+    - Restart blazar-manager container

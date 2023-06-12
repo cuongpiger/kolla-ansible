@@ -10,6 +10,24 @@ Failures
 If Kolla fails, often it is caused by a CTRL-C during the deployment
 process or a problem in the ``globals.yml`` configuration.
 
+.. note::
+
+   In some countries like China, Kolla might fail due to unable to pull images
+   from `Docker Hub <https://hub.docker.com/u/kolla/>`__. There is a workround
+   to solve this issue:
+
+   .. code-block:: console
+
+      mkdir -p /etc/docker
+      tee /etc/docker/daemon.json <<-'EOF'
+      {
+        "registry-mirrors": ["https://registry.docker-cn.com"]
+      }
+      EOF
+      systemctl restart docker
+
+   .. end
+
 To correct the problem where Operators have a misconfigured environment,
 the Kolla community has added a precheck feature which ensures the
 deployment targets are in a state where Kolla may deploy to them. To
@@ -18,6 +36,8 @@ run the prechecks:
 .. code-block:: console
 
    kolla-ansible prechecks
+
+.. end
 
 If a failure during deployment occurs it nearly always occurs during evaluation
 of the software. Once the Operator learns the few configuration options
@@ -34,6 +54,8 @@ remove the failed deployment:
 
    kolla-ansible destroy -i <<inventory-file>>
 
+.. end
+
 Any time the tags of a release change, it is possible that the container
 implementation from older versions won't match the Ansible playbooks in a new
 version. If running multinode from a registry, each node's Docker image cache
@@ -43,6 +65,8 @@ refresh the docker cache from the local Docker registry:
 .. code-block:: console
 
    kolla-ansible pull
+
+.. end
 
 Debugging Kolla
 ~~~~~~~~~~~~~~~
@@ -54,6 +78,8 @@ targets by executing:
 
    docker ps -a
 
+.. end
+
 If any of the containers exited, this indicates a bug in the container. Please
 seek help by filing a `launchpad bug <https://bugs.launchpad.net/kolla-ansible/+filebug>`__
 or contacting the developers via IRC.
@@ -64,6 +90,8 @@ The logs can be examined by executing:
 
    docker exec -it fluentd bash
 
+.. end
+
 The logs from all services in all containers may be read from
 ``/var/log/kolla/SERVICE_NAME``
 
@@ -72,6 +100,8 @@ If the stdout logs are needed, please run:
 .. code-block:: console
 
    docker logs <container-name>
+
+.. end
 
 Note that most of the containers don't log to stdout so the above command will
 provide no information.

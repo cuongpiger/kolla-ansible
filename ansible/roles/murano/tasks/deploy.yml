@@ -1,17 +1,21 @@
 ---
-- import_tasks: register.yml
+- include_tasks: register.yml
+  when: inventory_hostname in groups['murano-api']
 
-- import_tasks: config.yml
-
-- import_tasks: check-containers.yml
+- include_tasks: config.yml
+  when: inventory_hostname in groups['murano-api'] or
+        inventory_hostname in groups['murano-engine']
 
 - include_tasks: clone.yml
   when:
     - murano_dev_mode | bool
+    - inventory_hostname in groups['murano-api'] or
+      inventory_hostname in groups['murano-engine']
 
-- import_tasks: bootstrap.yml
+- include_tasks: bootstrap.yml
+  when: inventory_hostname in groups['murano-api']
 
 - name: Flush handlers
   meta: flush_handlers
 
-- import_tasks: import_library_packages.yml
+- include_tasks: import_library_packages.yml

@@ -1,14 +1,17 @@
 ---
-- import_tasks: register.yml
+- include_tasks: register.yml
+  when: inventory_hostname in groups['barbican-api']
 
-- import_tasks: config.yml
-
-- import_tasks: check-containers.yml
+- include_tasks: config.yml
+  when: inventory_hostname in groups['barbican-api'] or
+        inventory_hostname in groups['barbican-worker'] or
+        inventory_hostname in groups['barbican-keystone-listener']
 
 - include_tasks: clone.yml
   when: barbican_dev_mode | bool
 
-- import_tasks: bootstrap.yml
+- include_tasks: bootstrap.yml
+  when: inventory_hostname in groups['barbican-api']
 
 - name: Flush handlers
   meta: flush_handlers

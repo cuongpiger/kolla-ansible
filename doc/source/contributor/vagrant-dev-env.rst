@@ -1,3 +1,5 @@
+.. vagrant-dev-env:
+
 ====================================
 Development Environment with Vagrant
 ====================================
@@ -40,20 +42,25 @@ choice. Various downloads can be found at the `Vagrant downloads
 
 Install required dependencies as follows:
 
-For CentOS or RHEL 8:
+For CentOS 7 or later:
 
 .. code-block:: console
 
-   sudo dnf install ruby-devel libvirt-devel zlib-devel libpng-devel gcc \
-   qemu-kvm qemu-img libvirt python3-libvirt libvirt-client virt-install git
+   sudo yum install ruby-devel libvirt-devel zlib-devel libpng-devel gcc \
+   qemu-kvm qemu-img libvirt libvirt-python libvirt-client virt-install \
+   bridge-utils git
+
+.. end
 
 For Ubuntu 16.04 or later:
 
 .. code-block:: console
 
-   sudo apt install vagrant ruby-dev ruby-libvirt python-libvirt \
+   sudo apt-get install vagrant ruby-dev ruby-libvirt python-libvirt \
    qemu-utils qemu-kvm libvirt-dev nfs-kernel-server zlib1g-dev libpng12-dev \
    gcc git
+
+.. end
 
 .. note::
 
@@ -67,11 +74,15 @@ Next install the hostmanager plugin so all hosts are recorded in ``/etc/hosts``
 
    vagrant plugin install vagrant-hostmanager
 
+.. end
+
 If you are going to use VirtualBox, then install vagrant-vbguest:
 
 .. code-block:: console
 
    vagrant plugin install vagrant-vbguest
+
+.. end
 
 Vagrant supports a wide range of virtualization technologies. If VirtualBox is
 used, the vbguest plugin will be required to install the VirtualBox Guest
@@ -81,12 +92,16 @@ Additions in the virtual machine:
 
    vagrant plugin install vagrant-vbguest
 
+.. end
+
 This documentation focuses on libvirt specifics. To install vagrant-libvirt
 plugin:
 
 .. code-block:: console
 
    vagrant plugin install --plugin-version ">= 0.0.31" vagrant-libvirt
+
+.. end
 
 Some Linux distributions offer vagrant-libvirt packages, but the version they
 provide tends to be too old to run Kolla. A version of >= 0.0.31 is required.
@@ -98,6 +113,8 @@ a password, add the user to the libvirt group:
 
    sudo gpasswd -a ${USER} libvirt
    newgrp libvirt
+
+.. end
 
 .. note::
 
@@ -114,6 +131,8 @@ than VirtualBox shared folders. For CentOS:
    sudo firewall-cmd --zone=internal --add-interface=virbr0
    sudo firewall-cmd --zone=internal --add-interface=virbr1
 
+.. end
+
 #. Enable nfs, rpc-bind and mountd services for firewalld:
 
 .. code-block:: console
@@ -126,6 +145,8 @@ than VirtualBox shared folders. For CentOS:
    sudo firewall-cmd --permanent --add-port=111/udp
    sudo firewall-cmd --permanent --add-port=111/tcp
    sudo firewall-cmd --reload
+
+.. end
 
 .. note::
 
@@ -140,6 +161,8 @@ than VirtualBox shared folders. For CentOS:
    sudo systemctl start nfs-server
    sudo systemctl start rpcbind.service
 
+.. end
+
 Ensure your system has libvirt and associated software installed and setup
 correctly. For CentOS:
 
@@ -148,13 +171,17 @@ correctly. For CentOS:
    sudo systemctl start libvirtd
    sudo systemctl enable libvirtd
 
+.. end
+
 Find a location in the system's home directory and checkout Kolla repos:
 
 .. code-block:: console
 
-   git clone https://opendev.org/openstack/kolla-cli
-   git clone https://opendev.org/openstack/kolla-ansible
-   git clone https://opendev.org/openstack/kolla
+   git clone https://git.openstack.org/openstack/kolla-cli
+   git clone https://git.openstack.org/openstack/kolla-ansible
+   git clone https://git.openstack.org/openstack/kolla
+
+.. end
 
 All repos must share the same parent directory so the bootstrap code can
 locate them.
@@ -165,6 +192,8 @@ CentOS 7-based environment:
 .. code-block:: console
 
    cd kolla-ansible/contrib/dev/vagrant && vagrant up
+
+.. end
 
 The command ``vagrant status`` provides a quick overview of the VMs composing
 the environment.
@@ -178,6 +207,8 @@ Kolla. First, connect with the **operator** node:
 .. code-block:: console
 
    vagrant ssh operator
+
+.. end
 
 To speed things up, there is a local registry running on the operator. All
 nodes are configured so they can use this insecure repo to pull from, and use
@@ -200,19 +231,12 @@ Once logged on the **operator** VM call the ``kolla-build`` utility:
 
    kolla-build
 
-``kolla-build`` accept arguments as documented in
-:kolla-doc:`Building Container Images <admin/image-building.html>`.
+.. end
+
+``kolla-build`` accept arguments as documented in `Building Container Images
+<https://docs.openstack.org/kolla/latest/admin/image-building.html>`_.
 It builds Docker images and pushes them to the local registry if the **push**
 option is enabled (in Vagrant this is the default behaviour).
-
-Generating passwords
---------------------
-
-Before proceeding with the deployment you must generate the service passwords:
-
-.. code-block:: console
-
-   kolla-genpwd
 
 Deploying OpenStack with Kolla
 ------------------------------
@@ -223,11 +247,9 @@ To deploy **all-in-one**:
 
    sudo kolla-ansible deploy
 
-To deploy **multinode**:
+.. end
 
-Ensure that the nodes deployed by Vagrant match those specified in the
-inventory file:
-``/usr/share/kolla-ansible/ansible/inventory/multinode``.
+To deploy multinode:
 
 For Centos 7:
 
@@ -235,20 +257,25 @@ For Centos 7:
 
    sudo kolla-ansible deploy -i /usr/share/kolla-ansible/ansible/inventory/multinode
 
+.. end
+
 For Ubuntu 16.04 or later:
 
 .. code-block:: console
 
    sudo kolla-ansible deploy -i /usr/local/share/kolla-ansible/ansible/inventory/multinode
 
+.. end
+
 Validate OpenStack is operational:
 
 .. code-block:: console
 
    kolla-ansible post-deploy
-   export OS_CLIENT_CONFIG_FILE=/etc/kolla/clouds.yaml
-   export OS_CLOUD=kolla-admin
+   . /etc/kolla/admin-openrc.sh
    openstack user list
+
+.. end
 
 Or navigate to ``http://172.28.128.254/`` with a web browser.
 

@@ -1,17 +1,8 @@
 ---
-- import_role:
-    name: service-precheck
-  vars:
-    service_precheck_services: "{{ etcd_services }}"
-    service_name: "{{ project_name }}"
-
 - name: Get container facts
-  become: true
   kolla_container_facts:
-    container_engine: "{{ kolla_container_engine }}"
     name:
       - etcd
-  check_mode: false
   register: container_facts
 
 - name: Checking free port for Etcd Peer
@@ -23,7 +14,7 @@
     state: stopped
   when:
     - container_facts['etcd'] is not defined
-    - inventory_hostname in groups[etcd_services.etcd.group]
+    - inventory_hostname in groups['etcd']
 
 - name: Checking free port for Etcd Client
   wait_for:
@@ -34,4 +25,4 @@
     state: stopped
   when:
     - container_facts['etcd'] is not defined
-    - inventory_hostname in groups[etcd_services.etcd.group]
+    - inventory_hostname in groups['etcd']

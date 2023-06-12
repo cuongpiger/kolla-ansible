@@ -1,14 +1,17 @@
 ---
-- import_tasks: register.yml
+- include_tasks: register.yml
+  when: inventory_hostname in groups['mistral-api']
 
-- import_tasks: config.yml
-
-- import_tasks: check-containers.yml
+- include_tasks: config.yml
+  when: inventory_hostname in groups['mistral-api'] or
+        inventory_hostname in groups['mistral-engine'] or
+        inventory_hostname in groups['mistral-executor']
 
 - include_tasks: clone.yml
   when: mistral_dev_mode | bool
 
-- import_tasks: bootstrap.yml
+- include_tasks: bootstrap.yml
+  when: inventory_hostname in groups['mistral-api']
 
 - name: Flush handlers
   meta: flush_handlers

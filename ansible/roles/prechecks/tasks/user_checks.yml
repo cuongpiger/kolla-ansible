@@ -12,9 +12,8 @@
 
 # NOTE(duonghq): it's only a basic check, should be refined later
 - name: Check if ansible user can do passwordless sudo
-  command: "true"
+  shell: "true"
   become: yes
   register: result
-  failed_when: result is failed
+  failed_when: result | failed
   changed_when: False
-  check_mode: false

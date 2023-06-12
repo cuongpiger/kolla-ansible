@@ -17,11 +17,10 @@
     labels:
       BOOTSTRAP:
     name: "bootstrap_mariadb"
-    restart_policy: no
+    restart_policy: "never"
     volumes: "{{ service.volumes }}"
   notify:
-    - Bootstrap MariaDB cluster
+    - Starting first MariaDB container
 
-- name: Store bootstrap host name into facts
-  set_fact:
+- set_fact:
     bootstrap_host: "{{ inventory_hostname }}"
