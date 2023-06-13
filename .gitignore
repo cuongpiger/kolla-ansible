@@ -57,6 +57,3 @@ ansible/*.retry
 # Others
 .DS_Store
 .vimrc
-.vscode
-.idea
-

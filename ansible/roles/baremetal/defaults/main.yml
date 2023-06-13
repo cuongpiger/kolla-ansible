@@ -83,7 +83,7 @@ easy_install_available: >-
 debian_pkg_install:
  - "{{ docker_apt_package }}"
  - git
- - "{% if not easy_install_available %}python-apt{% endif %}"
+ - "{% if not easy_install_available %}python-pip{% endif %}"
  - python-setuptools
  - "{% if enable_host_ntp | bool %}ntp{% endif %}"
  - "{% if enable_ceph_nfs|bool %}rpcbind{% endif %}"
