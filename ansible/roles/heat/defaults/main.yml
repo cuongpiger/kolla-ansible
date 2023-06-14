@@ -77,7 +77,7 @@ heat_database_address: "{{ database_address }}:{{ database_port }}"
 # Docker
 ####################
 heat_install_type: "{{ kolla_install_type }}"
-heat_tag: "{{ openstack_release }}"
+heat_tag: "victoria"
 
 heat_api_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ heat_install_type }}-heat-api"
 heat_api_tag: "{{ heat_tag }}"
