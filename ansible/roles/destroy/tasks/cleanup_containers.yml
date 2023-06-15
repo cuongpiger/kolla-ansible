@@ -6,5 +6,5 @@
   when: inventory_hostname in groups['compute']
 
 - name: Destroying all Kolla containers and volumes on non compute node
-  command: /tmp/kolla-cleanup/tools/cleanup-containers
+  script: ../tools/cleanup-containers
   when: inventory_hostname not in groups['compute']
