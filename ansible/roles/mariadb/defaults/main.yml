@@ -56,7 +56,7 @@ external_haproxy_members: "{% for host in groups['mariadb'] %}server {{ host }} 
 ####################
 mariadb_install_type: "{{ kolla_install_type }}"
 mariadb_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ mariadb_install_type }}-mariadb"
-mariadb_tag: "{{ openstack_release }}"
+mariadb_tag: "rocky"
 mariadb_image_full: "{{ mariadb_image }}:{{ mariadb_tag }}"
 mariadb_dimensions: "{{ default_container_dimensions }}"
 

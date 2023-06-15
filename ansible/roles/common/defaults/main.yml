@@ -62,11 +62,11 @@ kolla_toolbox_dimensions: "{{ default_container_dimensions }}"
 fluentd_dimensions: "{{ default_container_dimensions }}"
 
 kolla_toolbox_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ common_install_type }}-kolla-toolbox"
-kolla_toolbox_tag: "{{ common_tag }}"
+kolla_toolbox_tag: "rocky"
 kolla_toolbox_image_full: "{{ kolla_toolbox_image }}:{{ kolla_toolbox_tag }}"
 
 cron_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ common_install_type }}-cron"
-cron_tag: "{{ common_tag }}"
+cron_tag: "rocky"
 cron_image_full: "{{ cron_image }}:{{ cron_tag }}"
 
 fluentd_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ docker_namespace }}/{{ kolla_base_distro }}-{{ common_install_type }}-fluentd"
